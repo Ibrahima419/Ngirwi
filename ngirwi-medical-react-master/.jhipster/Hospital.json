@@ -1,0 +1,26 @@
+{
+  "changelogDate": "20240704175101",
+  "fields": [
+    {
+      "fieldName": "name",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "adress",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "phone",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "logo",
+      "fieldType": "byte[]",
+      "fieldTypeBlobContent": "image"
+    }
+  ],
+  "name": "Hospital",
+  "pagination": "pagination",
+  "readOnly": false,
+  "relationships": []
+}

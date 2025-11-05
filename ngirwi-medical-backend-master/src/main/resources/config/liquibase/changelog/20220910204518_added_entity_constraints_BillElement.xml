@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <!--
+        Added the constraints for entity BillElement.
+    -->
+    <changeSet id="20220910204518-2" author="jhipster">
+
+        <addForeignKeyConstraint baseColumnNames="bill_id"
+                                 baseTableName="bill_element"
+                                 constraintName="fk_bill_element__bill_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="bill"/>
+    </changeSet>
+</databaseChangeLog>

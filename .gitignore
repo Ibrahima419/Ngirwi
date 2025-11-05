@@ -1,0 +1,18 @@
+# Root ignores
+**/node_modules/
+**/target/
+**/dist/
+**/build/
+**/.cache/
+**/.idea/
+**/.vscode/
+**/.DS_Store
+**/logs/
+**/*.log
+
+# Env & local config
+**/.env*
+ngirwi-medical-react-master/config
+**/coverage/
+
+

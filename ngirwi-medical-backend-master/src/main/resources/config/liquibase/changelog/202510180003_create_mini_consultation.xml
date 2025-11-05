@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="202510180003-create-mini-consultation" author="ai">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <not>
+                <tableExists tableName="mini_consultation"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="mini_consultation">
+            <column name="id" type="bigint">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="summary" type="${clobType}"/>
+            <column name="diagnosis" type="varchar(512)"/>
+            <column name="price" type="numeric(21,2)"/>
+            <column name="surveillance_sheet_id" type="bigint">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="mini_consultation"
+                                  baseColumnNames="surveillance_sheet_id"
+                                  constraintName="fk_mini_consultation__sheet_id"
+                                  referencedTableName="surveillance_sheet"
+                                  referencedColumnNames="id"/>
+    </changeSet>
+
+</databaseChangeLog>
+
+
+
+
+
+
+
+

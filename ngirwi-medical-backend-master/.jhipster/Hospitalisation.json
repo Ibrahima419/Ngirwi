@@ -1,0 +1,42 @@
+{
+  "changelogDate": "20221208153441",
+  "dto": "no",
+  "fields": [
+    {
+      "fieldName": "entryDate",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "releaseDate",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "doctorName",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "status",
+      "fieldType": "HospitalisationStatus",
+      "fieldValues": "STARTED,ONGOING,DONE"
+    }
+  ],
+  "jpaMetamodelFiltering": false,
+  "name": "Hospitalisation",
+  "pagination": "pagination",
+  "readOnly": false,
+  "relationships": [
+    {
+      "otherEntityField": "id",
+      "otherEntityName": "patient",
+      "relationshipName": "patient",
+      "relationshipType": "many-to-one"
+    },
+    {
+      "otherEntityName": "surveillanceSheet",
+      "otherEntityRelationshipName": "hospitalisation",
+      "relationshipName": "surveillanceSheet",
+      "relationshipType": "one-to-many"
+    }
+  ],
+  "service": "serviceClass"
+}

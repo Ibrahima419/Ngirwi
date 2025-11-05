@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity SurveillanceSheet.
+    -->
+    <changeSet id="20221208154112-1" author="jhipster">
+        <createTable tableName="surveillance_sheet">
+            <column name="id" type="bigint">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="ta" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="temperature" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="pulse_rate" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="respiratory_frequency" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="recoloration_time" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="glasgow" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="gravity_class" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="horary_diuresis" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="spo_2" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="treatment" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="health_evolution" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="sheet_date" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="hospitalisation_id" type="bigint">
+                <constraints nullable="true" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20221208154112-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/surveillance_sheet.csv"
+                  separator=";"
+                  tableName="surveillance_sheet"
+                  usePreparedStatements="true">
+            <column name="id" type="numeric"/>
+            <column name="ta" type="string"/>
+            <column name="temperature" type="string"/>
+            <column name="pulse_rate" type="string"/>
+            <column name="respiratory_frequency" type="string"/>
+            <column name="recoloration_time" type="string"/>
+            <column name="glasgow" type="string"/>
+            <column name="gravity_class" type="string"/>
+            <column name="horary_diuresis" type="string"/>
+            <column name="spo_2" type="string"/>
+            <column name="treatment" type="string"/>
+            <column name="health_evolution" type="string"/>
+            <column name="sheet_date" type="string"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

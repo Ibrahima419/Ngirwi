@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Adjust surveillance_sheet types and add element collections and unique constraint -->
+    <changeSet id="202510180002-surv-types-and-collections" author="ai">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <tableExists tableName="surveillance_sheet"/>
+        </preConditions>
+
+        <!-- Ensure sheet_date exists with proper type and not null -->
+        <modifyDataType tableName="surveillance_sheet" columnName="sheet_date" newDataType="date"/>
+        <addNotNullConstraint tableName="surveillance_sheet" columnName="sheet_date" columnDataType="date"/>
+
+        <!-- Ensure numeric vitals columns exist with appropriate types (create if missing) -->
+        <sql>ALTER TABLE surveillance_sheet ADD COLUMN IF NOT EXISTS systolic_bp INT;</sql>
+        <sql>ALTER TABLE surveillance_sheet ADD COLUMN IF NOT EXISTS diastolic_bp INT;</sql>
+        <sql>ALTER TABLE surveillance_sheet ADD COLUMN IF NOT EXISTS pulse_rate INT;</sql>
+        <sql>ALTER TABLE surveillance_sheet ADD COLUMN IF NOT EXISTS respiration_rate INT;</sql>
+        <sql>ALTER TABLE surveillance_sheet ADD COLUMN IF NOT EXISTS spo2 INT;</sql>
+        <sql>ALTER TABLE surveillance_sheet ADD COLUMN IF NOT EXISTS temperature NUMERIC(3,1);</sql>
+        <sql>ALTER TABLE surveillance_sheet ADD COLUMN IF NOT EXISTS nursing_notes VARCHAR(255);</sql>
+        <sql>ALTER TABLE surveillance_sheet ADD COLUMN IF NOT EXISTS medical_observations VARCHAR(255);</sql>
+        <sql>ALTER TABLE surveillance_sheet ADD COLUMN IF NOT EXISTS acts_performed VARCHAR(255);</sql>
+        <sql>ALTER TABLE surveillance_sheet ADD COLUMN IF NOT EXISTS administered_medication ${clobType};</sql>
+
+        <!-- Unique (hospitalisation_id, sheet_date) - idempotent -->
+        <sql>CREATE UNIQUE INDEX IF NOT EXISTS ux_fj_hosp_date ON surveillance_sheet(hospitalisation_id, sheet_date);</sql>
+
+        <!-- Element collection tables -->
+        <sql>CREATE TABLE IF NOT EXISTS surveillance_sheet_medications (
+            surveillance_sheet_id BIGINT NOT NULL,
+            med_name VARCHAR(256) NOT NULL,
+            med_unit_price NUMERIC(21,2) NOT NULL,
+            med_quantity INT NOT NULL
+        );</sql>
+        <addForeignKeyConstraint baseTableName="surveillance_sheet_medications" baseColumnNames="surveillance_sheet_id"
+                                 referencedTableName="surveillance_sheet" referencedColumnNames="id"
+                                 constraintName="fk_ss_medications__sheet_id"/>
+
+        <sql>CREATE TABLE IF NOT EXISTS surveillance_sheet_acts (
+            surveillance_sheet_id BIGINT NOT NULL,
+            act_name VARCHAR(256) NOT NULL,
+            act_unit_price NUMERIC(21,2) NOT NULL,
+            act_quantity INT NOT NULL
+        );</sql>
+        <addForeignKeyConstraint baseTableName="surveillance_sheet_acts" baseColumnNames="surveillance_sheet_id"
+                                 referencedTableName="surveillance_sheet" referencedColumnNames="id"
+                                 constraintName="fk_ss_acts__sheet_id"/>
+    </changeSet>
+
+</databaseChangeLog>
+

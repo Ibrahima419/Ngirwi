@@ -1,0 +1,53 @@
+{
+  "applications": "*",
+  "changelogDate": "20220910204517",
+  "dto": "mapstruct",
+  "embedded": false,
+  "entityTableName": "bill",
+  "fields": [
+    {
+      "fieldName": "date",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "author",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "insurance",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "desc",
+      "fieldType": "byte[]",
+      "fieldTypeBlobContent": "text"
+    },
+    {
+      "fieldName": "ipm",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "total",
+      "fieldType": "BigDecimal"
+    }
+  ],
+  "fluentMethods": true,
+  "jpaMetamodelFiltering": false,
+  "name": "Bill",
+  "pagination": "pagination",
+  "readOnly": false,
+  "relationships": [
+    {
+      "otherEntityName": "patient",
+      "relationshipName": "patient",
+      "relationshipType": "many-to-one"
+    },
+    {
+      "otherEntityName": "billElement",
+      "otherEntityRelationshipName": "bill",
+      "relationshipName": "billElement",
+      "relationshipType": "one-to-many"
+    }
+  ],
+  "service": "serviceClass"
+}

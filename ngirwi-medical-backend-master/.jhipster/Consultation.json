@@ -1,0 +1,332 @@
+{
+  "applications": "*",
+  "changelogDate": "20220910204514",
+  "dto": "mapstruct",
+  "embedded": false,
+  "entityTableName": "consultation",
+  "fields": [
+    {
+      "fieldName": "dateTime",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "temperature",
+      "fieldType": "Double",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "weight",
+      "fieldType": "Double",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "tension",
+      "fieldType": "String",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "glycemie",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "comment",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "hypothesis",
+      "fieldType": "String",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "exams",
+      "fieldType": "String",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "treatment",
+      "fieldType": "String",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "author",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "og",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "vd",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "eseptum",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "ao",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "vGDiastole",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "ouvertureAo",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "vGSystole",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "vp",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "oGAo",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "fRTeicholtz",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "eVp",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "septumVg",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "fETeicholz",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "tapse",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "paroiPost",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "surfaceOg",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "surfaceOd",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "mesureVd",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "fe",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "feA2C",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "feBiplan",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "e",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "a",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "eA",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "td",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "triv",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "dureeAmIm",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "surfaceRegurgitee",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "pba",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "qr",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "vr",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "sor",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "fr",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "vmaxAp",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "itv",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "gradMax",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "gradMoy",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "dc",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "iAoextension",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "venaContracta",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "pht",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "iTExtension",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "gradMaxB",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "paps",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "ip",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "vmax",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "gradMaxC",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "gradMoyB",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "s",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "d",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "sD",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "aA",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "dureeAp",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "eAA",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "aAA",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "eAAa",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "eEa",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "z",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "examGeneral",
+      "fieldType": "byte[]",
+      "fieldTypeBlobContent": "text"
+    },
+    {
+      "fieldName": "frequenceRespiratoire",
+      "fieldType": "Double"
+    },
+    {
+      "fieldName": "frequenceCardiaque",
+      "fieldType": "Double"
+    },
+    {
+      "fieldName": "commentaireLibre",
+      "fieldType": "byte[]",
+      "fieldTypeBlobContent": "text"
+    },
+    {
+      "fieldName": "resultatsParaclinique",
+      "fieldType": "byte[]",
+      "fieldTypeBlobContent": "text"
+    }
+  ],
+  "fluentMethods": true,
+  "jpaMetamodelFiltering": false,
+  "name": "Consultation",
+  "pagination": "pagination",
+  "readOnly": false,
+  "relationships": [
+    {
+      "otherEntityField": "lastName",
+      "otherEntityName": "patient",
+      "otherEntityRelationshipName": "consultations",
+      "relationshipName": "patient",
+      "relationshipType": "many-to-one"
+    },
+    {
+      "otherEntityName": "prescription",
+      "otherEntityRelationshipName": "consultation",
+      "ownerSide": false,
+      "relationshipName": "ordonance",
+      "relationshipType": "one-to-one"
+    }
+  ],
+  "service": "serviceClass"
+}

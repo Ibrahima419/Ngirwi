@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity DossierMedical.
+    -->
+    <changeSet id="20220910204513-1" author="jhipster">
+        <createTable tableName="dossier_medical">
+            <column name="id" type="bigint">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="motif_consultation" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="histoire_maladie" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="terrain" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="antecedants_personnels" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="antecedants_chirurgicaux" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="antecedants_familiaux" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="gyneco_obstretrique" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="syndromique" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="dad" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="mom" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="siblings" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="descendants" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_created" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_updated" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="author" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="patient_id" type="bigint">
+                <constraints nullable="true" unique="true" uniqueConstraintName="ux_dossier_medical__patient_id" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="dossier_medical" columnName="date_created" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="dossier_medical" columnName="date_updated" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20220910204513-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/dossier_medical.csv"
+                  separator=";"
+                  tableName="dossier_medical"
+                  usePreparedStatements="true">
+            <column name="id" type="numeric"/>
+            <column name="motif_consultation" type="string"/>
+            <column name="histoire_maladie" type="string"/>
+            <column name="terrain" type="string"/>
+            <column name="antecedants_personnels" type="string"/>
+            <column name="antecedants_chirurgicaux" type="string"/>
+            <column name="antecedants_familiaux" type="string"/>
+            <column name="gyneco_obstretrique" type="string"/>
+            <column name="syndromique" type="string"/>
+            <column name="dad" type="string"/>
+            <column name="mom" type="string"/>
+            <column name="siblings" type="string"/>
+            <column name="descendants" type="string"/>
+            <column name="date_created" type="date"/>
+            <column name="date_updated" type="date"/>
+            <column name="author" type="string"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

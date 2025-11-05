@@ -1,0 +1,91 @@
+{
+  "applications": "*",
+  "changelogDate": "20220910204313",
+  "dto": "mapstruct",
+  "embedded": false,
+  "entityTableName": "dossier_medical",
+  "fields": [
+    {
+      "fieldName": "motifConsultation",
+      "fieldType": "String",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "histoireMaladie",
+      "fieldType": "String",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "terrain",
+      "fieldType": "String",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "antecedantsPersonnels",
+      "fieldType": "String",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "antecedantsChirurgicaux",
+      "fieldType": "String",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "antecedantsFamiliaux",
+      "fieldType": "String",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "gynecoObstretrique",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "syndromique",
+      "fieldType": "String",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "dad",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "mom",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "siblings",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "descendants",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "dateCreated",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "dateUpdated",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "author",
+      "fieldType": "String"
+    }
+  ],
+  "fluentMethods": true,
+  "jpaMetamodelFiltering": false,
+  "name": "DossierMedical",
+  "pagination": "pagination",
+  "readOnly": false,
+  "relationships": [
+    {
+      "otherEntityName": "patient",
+      "otherEntityRelationshipName": "dossierMedical",
+      "ownerSide": true,
+      "relationshipName": "patient",
+      "relationshipType": "one-to-one"
+    }
+  ],
+  "service": "serviceClass"
+}

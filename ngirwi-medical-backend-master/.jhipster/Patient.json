@@ -1,0 +1,96 @@
+{
+  "applications": "*",
+  "changelogDate": "20220910204512",
+  "dto": "mapstruct",
+  "embedded": false,
+  "entityTableName": "patient",
+  "fields": [
+    {
+      "fieldName": "firstName",
+      "fieldType": "String",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "lastName",
+      "fieldType": "String",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "birthday",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "birthplace",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "gender",
+      "fieldType": "GENDER",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "MALE,FEMALE"
+    },
+    {
+      "fieldName": "adress",
+      "fieldType": "String",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "phone",
+      "fieldType": "String",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "cni",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique"]
+    },
+    {
+      "fieldName": "job",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "bloodType",
+      "fieldType": "BLOODTYPE",
+      "fieldValues": "A_PLUS,A_MOINS,B_PLUS,B_MOINS,O_PLUS,O_MOINS,AB_PLUS,AB_MOINS"
+    },
+    {
+      "fieldName": "maritialStatus",
+      "fieldType": "MARITALSTATUS",
+      "fieldValues": "MARRIED,SINGLE,WIDOWED,DIVORCED"
+    },
+    {
+      "fieldName": "dateCreated",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "dateUpdated",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "author",
+      "fieldType": "String"
+    }
+  ],
+  "fluentMethods": true,
+  "jpaMetamodelFiltering": false,
+  "name": "Patient",
+  "pagination": "pagination",
+  "readOnly": false,
+  "relationships": [
+    {
+      "otherEntityName": "dossierMedical",
+      "otherEntityRelationshipName": "patient",
+      "ownerSide": false,
+      "relationshipName": "dossierMedical",
+      "relationshipType": "one-to-one"
+    },
+    {
+      "otherEntityName": "consultation",
+      "otherEntityRelationshipName": "patient",
+      "relationshipName": "consultations",
+      "relationshipType": "one-to-many"
+    }
+  ],
+  "service": "serviceClass"
+}

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Extend hospitalisation with billing fields and dossier FK -->
+    <changeSet id="202510180001-extend-hospitalisation" author="ai">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <tableExists tableName="hospitalisation"/>
+        </preConditions>
+
+        <addColumn tableName="hospitalisation">
+            <column name="admission_reason" type="varchar(512)"/>
+            <column name="entry_diagnosis" type="varchar(512)"/>
+            <column name="final_diagnosis" type="varchar(512)"/>
+            <column name="service" type="varchar(128)"/>
+            <column name="daily_rate" type="numeric(21,2)"/>
+            <column name="comfort_fees" type="numeric(21,2)"/>
+            <column name="fee_overrun" type="numeric(21,2)"/>
+            <column name="insurance_coverage_percent" type="numeric(5,2)"/>
+            <column name="total_amount" type="numeric(21,2)"/>
+            <column name="dossier_medical_id" type="bigint"/>
+        </addColumn>
+
+        <addForeignKeyConstraint baseTableName="hospitalisation"
+                                  baseColumnNames="dossier_medical_id"
+                                  constraintName="fk_hospitalisation__dossier_medical_id"
+                                  referencedTableName="dossier_medical"
+                                  referencedColumnNames="id"/>
+    </changeSet>
+
+</databaseChangeLog>
+
+
+
+
+
+
+
+
+
+
+
+
+
+

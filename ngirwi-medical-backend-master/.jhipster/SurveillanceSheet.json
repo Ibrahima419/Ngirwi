@@ -1,0 +1,67 @@
+{
+  "changelogDate": "20221208154112",
+  "dto": "no",
+  "fields": [
+    {
+      "fieldName": "ta",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "temperature",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "pulseRate",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "respiratoryFrequency",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "recolorationTime",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "glasgow",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "gravityClass",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "horaryDiuresis",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "spo2",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "treatment",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "healthEvolution",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "sheetDate",
+      "fieldType": "String"
+    }
+  ],
+  "jpaMetamodelFiltering": false,
+  "name": "SurveillanceSheet",
+  "pagination": "pagination",
+  "readOnly": false,
+  "relationships": [
+    {
+      "otherEntityField": "id",
+      "otherEntityName": "hospitalisation",
+      "relationshipName": "hospitalisation",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "service": "serviceClass"
+}

@@ -1,0 +1,39 @@
+{
+  "applications": "*",
+  "changelogDate": "20220910204518",
+  "dto": "mapstruct",
+  "embedded": false,
+  "entityTableName": "bill_element",
+  "fields": [
+    {
+      "fieldName": "name",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "price",
+      "fieldType": "Double"
+    },
+    {
+      "fieldName": "percentage",
+      "fieldType": "Double"
+    },
+    {
+      "fieldName": "quantity",
+      "fieldType": "Integer"
+    }
+  ],
+  "fluentMethods": true,
+  "jpaMetamodelFiltering": false,
+  "name": "BillElement",
+  "pagination": "pagination",
+  "readOnly": false,
+  "relationships": [
+    {
+      "otherEntityName": "bill",
+      "otherEntityRelationshipName": "billElement",
+      "relationshipName": "bill",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "service": "serviceClass"
+}

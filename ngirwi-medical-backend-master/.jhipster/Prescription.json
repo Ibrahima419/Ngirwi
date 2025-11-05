@@ -1,0 +1,38 @@
+{
+  "applications": "*",
+  "changelogDate": "20220910204515",
+  "dto": "mapstruct",
+  "embedded": false,
+  "entityTableName": "prescription",
+  "fields": [
+    {
+      "fieldName": "creationDate",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "author",
+      "fieldType": "String"
+    }
+  ],
+  "fluentMethods": true,
+  "jpaMetamodelFiltering": false,
+  "name": "Prescription",
+  "pagination": "pagination",
+  "readOnly": false,
+  "relationships": [
+    {
+      "otherEntityName": "consultation",
+      "otherEntityRelationshipName": "ordonance",
+      "ownerSide": true,
+      "relationshipName": "consultation",
+      "relationshipType": "one-to-one"
+    },
+    {
+      "otherEntityName": "medecine",
+      "otherEntityRelationshipName": "ordonance",
+      "relationshipName": "medecine",
+      "relationshipType": "one-to-many"
+    }
+  ],
+  "service": "serviceClass"
+}
