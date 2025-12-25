@@ -6,19 +6,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sn.ngirwi.medical.domain.Bill;
 import sn.ngirwi.medical.domain.BillElement;
 import sn.ngirwi.medical.domain.Medecine;
+import sn.ngirwi.medical.domain.Patient;
 import sn.ngirwi.medical.domain.User;
 import sn.ngirwi.medical.repository.BillElementRepository;
 import sn.ngirwi.medical.repository.BillRepository;
+import sn.ngirwi.medical.repository.PatientRepository;
 import sn.ngirwi.medical.repository.UserRepository;
 import sn.ngirwi.medical.service.dto.BillDTO;
 import sn.ngirwi.medical.service.dto.BillElementDTO;
 import sn.ngirwi.medical.service.mapper.BillElementMapper;
 import sn.ngirwi.medical.service.mapper.BillMapper;
+import sn.ngirwi.medical.service.CurrentHospitalProvider;
 
 /**
  * Service Implementation for managing {@link Bill}.
@@ -38,19 +42,25 @@ public class BillService {
     private final BillMapper billMapper;
 
     private final BillElementMapper billElementMapper;
+    private final CurrentHospitalProvider currentHospitalProvider;
+    private final PatientRepository patientRepository;
 
     public BillService(
         BillRepository billRepository,
         BillElementRepository billElementRepository,
         UserRepository userRepository,
         BillMapper billMapper,
-        BillElementMapper billElementMapper
+        BillElementMapper billElementMapper,
+        CurrentHospitalProvider currentHospitalProvider,
+        PatientRepository patientRepository
     ) {
         this.billRepository = billRepository;
         this.billElementRepository = billElementRepository;
         this.userRepository = userRepository;
         this.billMapper = billMapper;
         this.billElementMapper = billElementMapper;
+        this.currentHospitalProvider = currentHospitalProvider;
+        this.patientRepository = patientRepository;
     }
 
     /**
@@ -61,6 +71,12 @@ public class BillService {
      */
     public BillDTO save(BillDTO billDTO) {
         log.debug("Request to save Bill : {}", billDTO);
+        Long patientId = billDTO.getPatient() != null ? billDTO.getPatient().getId() : null;
+        if (patientId == null) {
+            throw new IllegalArgumentException("patientId is required");
+        }
+        Patient p = patientRepository.findById(patientId).orElseThrow(() -> new IllegalArgumentException("Patient not found id=" + patientId));
+        assertSameHospital(p.getHospitalId());
         Bill bill = billMapper.toEntity(billDTO);
         bill = billRepository.save(bill);
         return billMapper.toDto(bill);
@@ -82,6 +98,12 @@ public class BillService {
     @Transactional
     public BillDTO saveBis(BillDTO billDTO) {
         log.debug("Request to save bill : {}", billDTO);
+        Long patientId = billDTO.getPatient() != null ? billDTO.getPatient().getId() : null;
+        if (patientId == null) {
+            throw new IllegalArgumentException("patientId is required");
+        }
+        Patient p = patientRepository.findById(patientId).orElseThrow(() -> new IllegalArgumentException("Patient not found id=" + patientId));
+        assertSameHospital(p.getHospitalId());
 
         Bill bill = billMapper.toEntity(billDTO);
         bill = mapElements(billDTO, bill);
@@ -141,6 +163,12 @@ public class BillService {
      */
     public BillDTO update(BillDTO billDTO) {
         log.debug("Request to update Bill : {}", billDTO);
+        if (billDTO.getId() == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        billRepository
+            .findById(billDTO.getId())
+            .ifPresent(existing -> assertSameHospital(existing.getPatient() != null ? existing.getPatient().getHospitalId() : null));
         Bill bill = billMapper.toEntity(billDTO);
         bill = billRepository.save(bill);
         return billMapper.toDto(bill);
@@ -148,6 +176,12 @@ public class BillService {
 
     public BillDTO updateBis(BillDTO billDTO) {
         log.debug("Request to update bill : {}", billDTO);
+        if (billDTO.getId() == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        billRepository
+            .findById(billDTO.getId())
+            .ifPresent(existing -> assertSameHospital(existing.getPatient() != null ? existing.getPatient().getHospitalId() : null));
 
         Bill bill = billMapper.toEntity(billDTO);
         bill = mapElements(billDTO, bill);
@@ -197,6 +231,7 @@ public class BillService {
         return billRepository
             .findById(billDTO.getId())
             .map(existingBill -> {
+                assertSameHospital(existingBill.getPatient() != null ? existingBill.getPatient().getHospitalId() : null);
                 billMapper.partialUpdate(existingBill, billDTO);
 
                 return existingBill;
@@ -218,7 +253,10 @@ public class BillService {
     //}
     public Page<Bill> findAll(Pageable pageable) {
         log.debug("Request to get all Bills");
-        return billRepository.findAll(pageable);
+        return currentHospitalProvider
+            .getCurrentHospitalId()
+            .map(hid -> billRepository.findByPatient_HospitalId(hid, pageable))
+            .orElseGet(() -> billRepository.findAll(pageable));
     }
 
     @Transactional(readOnly = true)
@@ -245,7 +283,10 @@ public class BillService {
     @Transactional(readOnly = true)
     public Optional<Bill> findOne(Long id) {
         log.debug("Request to get Bill : {}", id);
-        return billRepository.findById(id);
+        return currentHospitalProvider
+            .getCurrentHospitalId()
+            .map(hid -> billRepository.findByIdAndPatient_HospitalId(id, hid))
+            .orElseGet(() -> billRepository.findById(id));
     }
 
     /**
@@ -255,10 +296,23 @@ public class BillService {
      */
     public void delete(Long id) {
         log.debug("Request to delete Bill : {}", id);
+        billRepository
+            .findById(id)
+            .ifPresent(existing -> assertSameHospital(existing.getPatient() != null ? existing.getPatient().getHospitalId() : null));
         List<BillElement> billElements = billElementRepository.findByBill_Id(id);
         for (BillElement b : billElements) {
             billElementRepository.deleteById(b.getId());
         }
         billRepository.deleteById(id);
+    }
+
+    private void assertSameHospital(Long entityHospitalId) {
+        currentHospitalProvider
+            .getCurrentHospitalId()
+            .ifPresent(current -> {
+                if (entityHospitalId != null && !java.util.Objects.equals(entityHospitalId, current)) {
+                    throw new AccessDeniedException("Access denied: resource not in your hospital");
+                }
+            });
     }
 }

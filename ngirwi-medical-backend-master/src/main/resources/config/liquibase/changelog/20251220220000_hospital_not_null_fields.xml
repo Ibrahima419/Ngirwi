@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+      Align DB constraints with entity validation: Hospital.name/adress/phone are required.
+      We first backfill NULLs to empty strings to avoid migration failures on existing dev data.
+    -->
+    <changeSet id="20251220220000-1" author="ngirwi">
+        <update tableName="hospital">
+            <column name="name" value=""/>
+            <where>name IS NULL</where>
+        </update>
+        <update tableName="hospital">
+            <column name="adress" value=""/>
+            <where>adress IS NULL</where>
+        </update>
+        <update tableName="hospital">
+            <column name="phone" value=""/>
+            <where>phone IS NULL</where>
+        </update>
+
+        <addNotNullConstraint tableName="hospital" columnName="name" columnDataType="varchar(255)"/>
+        <addNotNullConstraint tableName="hospital" columnName="adress" columnDataType="varchar(255)"/>
+        <addNotNullConstraint tableName="hospital" columnName="phone" columnDataType="varchar(255)"/>
+    </changeSet>
+</databaseChangeLog>
+
+
+
+
+
+

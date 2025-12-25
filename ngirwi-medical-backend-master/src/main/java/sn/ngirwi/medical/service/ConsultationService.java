@@ -10,14 +10,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sn.ngirwi.medical.domain.Consultation;
 import sn.ngirwi.medical.domain.User;
+import sn.ngirwi.medical.domain.Patient;
 import sn.ngirwi.medical.repository.ConsultationRepository;
+import sn.ngirwi.medical.repository.PatientRepository;
 import sn.ngirwi.medical.repository.UserRepository;
 import sn.ngirwi.medical.service.dto.ConsultationDTO;
 import sn.ngirwi.medical.service.mapper.ConsultationMapper;
+import sn.ngirwi.medical.service.CurrentHospitalProvider;
 
 /**
  * Service Implementation for managing {@link Consultation}.
@@ -32,15 +36,21 @@ public class ConsultationService {
 
     private final ConsultationMapper consultationMapper;
     private final UserRepository userRepository;
+    private final CurrentHospitalProvider currentHospitalProvider;
+    private final PatientRepository patientRepository;
 
     public ConsultationService(
         ConsultationRepository consultationRepository,
         ConsultationMapper consultationMapper,
-        UserRepository userRepository
+        UserRepository userRepository,
+        CurrentHospitalProvider currentHospitalProvider,
+        PatientRepository patientRepository
     ) {
         this.consultationRepository = consultationRepository;
         this.consultationMapper = consultationMapper;
         this.userRepository = userRepository;
+        this.currentHospitalProvider = currentHospitalProvider;
+        this.patientRepository = patientRepository;
     }
 
     /**
@@ -51,6 +61,12 @@ public class ConsultationService {
      */
     public ConsultationDTO save(ConsultationDTO consultationDTO) {
         log.debug("Request to save Consultation : {}", consultationDTO);
+        Long patientId = consultationDTO.getPatient() != null ? consultationDTO.getPatient().getId() : null;
+        if (patientId == null) {
+            throw new IllegalArgumentException("patientId is required");
+        }
+        Patient patient = patientRepository.findById(patientId).orElseThrow(() -> new IllegalArgumentException("Patient not found id=" + patientId));
+        assertSameHospital(patient.getHospitalId());
         Consultation consultation = consultationMapper.toEntity(consultationDTO);
         consultation = consultationRepository.save(consultation);
         return consultationMapper.toDto(consultation);
@@ -64,6 +80,12 @@ public class ConsultationService {
      */
     public ConsultationDTO update(ConsultationDTO consultationDTO) {
         log.debug("Request to update Consultation : {}", consultationDTO);
+        if (consultationDTO.getId() == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        consultationRepository
+            .findById(consultationDTO.getId())
+            .ifPresent(existing -> assertSameHospital(existing.getPatient() != null ? existing.getPatient().getHospitalId() : null));
         Consultation consultation = consultationMapper.toEntity(consultationDTO);
         consultation = consultationRepository.save(consultation);
         return consultationMapper.toDto(consultation);
@@ -81,12 +103,23 @@ public class ConsultationService {
         return consultationRepository
             .findById(consultationDTO.getId())
             .map(existingConsultation -> {
+                assertSameHospital(existingConsultation.getPatient() != null ? existingConsultation.getPatient().getHospitalId() : null);
                 consultationMapper.partialUpdate(existingConsultation, consultationDTO);
 
                 return existingConsultation;
             })
             .map(consultationRepository::save)
             .map(consultationMapper::toDto);
+    }
+
+    private void assertSameHospital(Long entityHospitalId) {
+        currentHospitalProvider
+            .getCurrentHospitalId()
+            .ifPresent(current -> {
+                if (entityHospitalId != null && !java.util.Objects.equals(entityHospitalId, current)) {
+                    throw new AccessDeniedException("Access denied: resource not in your hospital");
+                }
+            });
     }
 
     /**
@@ -98,7 +131,11 @@ public class ConsultationService {
     @Transactional(readOnly = true)
     public Page<ConsultationDTO> findAll(Pageable pageable) {
         log.debug("Request to get all Consultations");
-        return consultationRepository.findAll(pageable).map(consultationMapper::toDto);
+        return currentHospitalProvider
+            .getCurrentHospitalId()
+            .map(hid -> consultationRepository.findByPatient_HospitalId(hid, pageable))
+            .orElseGet(() -> consultationRepository.findAll(pageable))
+            .map(consultationMapper::toDto);
     }
 
     @Transactional(readOnly = true)
@@ -147,7 +184,11 @@ public class ConsultationService {
     @Transactional(readOnly = true)
     public Optional<ConsultationDTO> findOne(Long id) {
         log.debug("Request to get Consultation : {}", id);
-        return consultationRepository.findOneWithEagerRelationships(id).map(consultationMapper::toDto);
+        return currentHospitalProvider
+            .getCurrentHospitalId()
+            .map(hid -> consultationRepository.findByIdAndPatient_HospitalId(id, hid))
+            .orElseGet(() -> consultationRepository.findOneWithToOneRelationships(id))
+            .map(consultationMapper::toDto);
     }
 
     /**
@@ -157,6 +198,9 @@ public class ConsultationService {
      */
     public void delete(Long id) {
         log.debug("Request to delete Consultation : {}", id);
+        consultationRepository
+            .findById(id)
+            .ifPresent(existing -> assertSameHospital(existing.getPatient() != null ? existing.getPatient().getHospitalId() : null));
         consultationRepository.deleteById(id);
     }
 }

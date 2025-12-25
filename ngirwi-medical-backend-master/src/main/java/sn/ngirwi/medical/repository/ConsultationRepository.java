@@ -40,4 +40,8 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
     Optional<Consultation> findOneWithToOneRelationships(@Param("id") Long id);
 
     Page<Consultation> findByAuthorIn(Collection<String> authors, Pageable pageable);
+
+    Page<Consultation> findByPatient_HospitalId(Long hospitalId, Pageable pageable);
+
+    Optional<Consultation> findByIdAndPatient_HospitalId(Long id, Long hospitalId);
 }

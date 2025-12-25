@@ -2,11 +2,19 @@ package sn.ngirwi.medical.service.dto;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Positive;
 
 public class ActEntryDTO implements Serializable {
 
+    @NotBlank
     private String name;
+
+    @DecimalMin(value = "0", inclusive = true)
     private BigDecimal unitPrice;
+
+    @Positive
     private Integer quantity;
 
     public String getName() {

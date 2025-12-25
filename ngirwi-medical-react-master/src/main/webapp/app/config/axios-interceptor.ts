@@ -20,7 +20,8 @@ const setupAxiosInterceptors = onUnauthenticated => {
   const onResponseSuccess = response => response;
   const onResponseError = err => {
     const status = err.status || (err.response ? err.response.status : 0);
-    if (status === 403 || status === 401) {
+    // Only clear session on 401 (unauthenticated). A 403 means "forbidden" and should not logout the user.
+    if (status === 401) {
       // Prevent redirect loop: don't trigger onUnauthenticated if:
       // 1. Already on login page
       // 2. Request is for /api/account (initial session check on app load)

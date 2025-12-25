@@ -93,14 +93,14 @@ export const Hospital = () => {
       }}
     >
       <h2 id="hospital-heading" data-cy="HospitalHeading">
-        Hospitals
+        Hôpitaux
         <div className="d-flex justify-content-end">
           <Button className="me-2" color="info" onClick={handleSyncList} disabled={loading}>
             <FontAwesomeIcon icon="sync" spin={loading} /> Actualiser la liste
           </Button>
           <Link to="/hospital/new" className="btn btn-primary jh-create-entity" id="jh-create-entity" data-cy="entityCreateButton">
             <FontAwesomeIcon icon="plus" />
-            &nbsp; Créer un nouveau Hospital
+            &nbsp; Créer un nouvel hôpital
           </Link>
         </div>
       </h2>

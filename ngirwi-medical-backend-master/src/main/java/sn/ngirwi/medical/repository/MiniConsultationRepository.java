@@ -7,4 +7,6 @@ import sn.ngirwi.medical.domain.MiniConsultation;
 @Repository
 public interface MiniConsultationRepository extends JpaRepository<MiniConsultation, Long> {
     java.util.List<MiniConsultation> findBySurveillanceSheet_Id(Long surveillanceSheetId);
+
+    java.util.List<MiniConsultation> findBySurveillanceSheet_Hospitalisation_Patient_HospitalId(Long hospitalId);
 }

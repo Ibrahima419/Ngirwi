@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sn.ngirwi.medical.domain.Hospitalisation;
@@ -19,6 +20,7 @@ import sn.ngirwi.medical.domain.SurveillanceSheet;
 import sn.ngirwi.medical.repository.SurveillanceSheetRepository;
 import sn.ngirwi.medical.service.dto.SurveillanceSheetDTO;
 import sn.ngirwi.medical.service.mapper.SurveillanceSheetMapper;
+import sn.ngirwi.medical.service.CurrentHospitalProvider;
 
 /**
  * Service for managing {@link SurveillanceSheet}.
@@ -32,15 +34,18 @@ public class SurveillanceSheetService {
     private final SurveillanceSheetRepository surveillanceSheetRepository;
     private final HospitalisationRepository hospitalisationRepository;
     private final SurveillanceSheetMapper surveillanceSheetMapper;
+    private final CurrentHospitalProvider currentHospitalProvider;
 
     public SurveillanceSheetService(
         SurveillanceSheetRepository surveillanceSheetRepository,
         SurveillanceSheetMapper surveillanceSheetMapper,
-        HospitalisationRepository hospitalisationRepository
+        HospitalisationRepository hospitalisationRepository,
+        CurrentHospitalProvider currentHospitalProvider
     ) {
         this.surveillanceSheetRepository = surveillanceSheetRepository;
         this.surveillanceSheetMapper = surveillanceSheetMapper;
         this.hospitalisationRepository = hospitalisationRepository;
+        this.currentHospitalProvider = currentHospitalProvider;
     }
 
     /**
@@ -60,6 +65,7 @@ public class SurveillanceSheetService {
         Hospitalisation hosp = hospitalisationRepository
             .findById(dto.getHospitalisationId())
             .orElseThrow(() -> new NoSuchElementException("Hospitalisation introuvable: id=" + dto.getHospitalisationId()));
+        assertSameHospital(hosp.getPatient() != null ? hosp.getPatient().getHospitalId() : null);
         if (hosp.getStatus() == HospitalisationStatus.DONE) {
             throw new IllegalStateException("Impossible d'ajouter une fiche: hospitalisation clôturée");
         }
@@ -67,6 +73,15 @@ public class SurveillanceSheetService {
         // Unicité applicative
         if (surveillanceSheetRepository.existsByHospitalisationIdAndSheetDate(dto.getHospitalisationId(), dto.getSheetDate())) {
             throw new IllegalStateException("Une fiche existe déjà pour cette hospitalisation et cette date");
+        }
+
+        // Validation de cohérence des paramètres vitaux
+        if (dto.getSystolicBP() != null && dto.getDiastolicBP() != null) {
+            if (dto.getSystolicBP() < dto.getDiastolicBP()) {
+                throw new IllegalArgumentException(
+                    "La tension systolique (" + dto.getSystolicBP() + " mmHg) ne peut pas être inférieure à la tension diastolique (" + dto.getDiastolicBP() + " mmHg)"
+                );
+            }
         }
 
         SurveillanceSheet entity = surveillanceSheetMapper.toEntity(dto);
@@ -96,6 +111,11 @@ public class SurveillanceSheetService {
         SurveillanceSheet existing = surveillanceSheetRepository
             .findById(dto.getId())
             .orElseThrow(() -> new NoSuchElementException("SurveillanceSheet introuvable: id=" + dto.getId()));
+        assertSameHospital(
+            existing.getHospitalisation() != null && existing.getHospitalisation().getPatient() != null
+                ? existing.getHospitalisation().getPatient().getHospitalId()
+                : null
+        );
 
         Long newHospId = dto.getHospitalisationId() != null
             ? dto.getHospitalisationId()
@@ -116,6 +136,15 @@ public class SurveillanceSheetService {
             .ifPresent(other -> {
                 throw new IllegalStateException("Conflit d'unicité: une fiche existe déjà pour cette date sur cette hospitalisation");
             });
+
+        // Validation de cohérence des paramètres vitaux
+        Integer systolic = dto.getSystolicBP() != null ? dto.getSystolicBP() : existing.getSystolicBP();
+        Integer diastolic = dto.getDiastolicBP() != null ? dto.getDiastolicBP() : existing.getDiastolicBP();
+        if (systolic != null && diastolic != null && systolic < diastolic) {
+            throw new IllegalArgumentException(
+                "La tension systolique (" + systolic + " mmHg) ne peut pas être inférieure à la tension diastolique (" + diastolic + " mmHg)"
+            );
+        }
 
         SurveillanceSheet toSave = surveillanceSheetMapper.toEntity(dto);
         // Important : le DTO ne transporte plus les mini-consultations ni les prescriptions.
@@ -166,6 +195,15 @@ public class SurveillanceSheetService {
                         throw new IllegalStateException("Conflit d'unicité: fiche déjà existante pour cette date");
                     });
 
+                // Validation de cohérence des paramètres vitaux (avant et après patch)
+                Integer systolic = dto.getSystolicBP() != null ? dto.getSystolicBP() : existing.getSystolicBP();
+                Integer diastolic = dto.getDiastolicBP() != null ? dto.getDiastolicBP() : existing.getDiastolicBP();
+                if (systolic != null && diastolic != null && systolic < diastolic) {
+                    throw new IllegalArgumentException(
+                        "La tension systolique (" + systolic + " mmHg) ne peut pas être inférieure à la tension diastolique (" + diastolic + " mmHg)"
+                    );
+                }
+
                 // Appliquer les champs non-nuls
                 if (dto.getSheetDate() != null) existing.setSheetDate(dto.getSheetDate());
                 if (dto.getTemperature() != null) existing.setTemperature(dto.getTemperature());
@@ -198,7 +236,11 @@ public class SurveillanceSheetService {
     @Transactional(readOnly = true)
     public Page<SurveillanceSheetDTO> findAll(Pageable pageable) {
         log.debug("Request to get all SurveillanceSheets");
-        return surveillanceSheetRepository.findAll(pageable).map(surveillanceSheetMapper::toDto);
+        return currentHospitalProvider
+            .getCurrentHospitalId()
+            .map(hid -> surveillanceSheetRepository.findByHospitalisation_Patient_HospitalId(hid, pageable))
+            .orElseGet(() -> surveillanceSheetRepository.findAll(pageable))
+            .map(surveillanceSheetMapper::toDto);
     }
 
     @Transactional(readOnly = true)
@@ -211,7 +253,20 @@ public class SurveillanceSheetService {
     @Transactional(readOnly = true)
     public Optional<SurveillanceSheetDTO> findOne(Long id) {
         log.debug("Request to get SurveillanceSheet id={}", id);
-        return surveillanceSheetRepository.findById(id).map(surveillanceSheetMapper::toDto);
+        return currentHospitalProvider
+            .getCurrentHospitalId()
+            .map(hid ->
+                surveillanceSheetRepository
+                    .findById(id)
+                    .filter(s -> {
+                        Long pid = s.getHospitalisation() != null && s.getHospitalisation().getPatient() != null
+                            ? s.getHospitalisation().getPatient().getHospitalId()
+                            : null;
+                        return pid == null || hid.equals(pid);
+                    })
+            )
+            .orElseGet(() -> surveillanceSheetRepository.findById(id))
+            .map(surveillanceSheetMapper::toDto);
     }
 
     @Transactional(readOnly = true)
@@ -227,7 +282,31 @@ public class SurveillanceSheetService {
 
     public void delete(Long id) {
         log.debug("Request to delete SurveillanceSheet id={}", id);
+        // Ensure tenant access before delete
+        currentHospitalProvider
+            .getCurrentHospitalId()
+            .ifPresent(hid -> {
+                SurveillanceSheet ss = surveillanceSheetRepository
+                    .findById(id)
+                    .orElseThrow(() -> new NoSuchElementException("SurveillanceSheet introuvable: id=" + id));
+                Long ssHid = ss.getHospitalisation() != null && ss.getHospitalisation().getPatient() != null
+                    ? ss.getHospitalisation().getPatient().getHospitalId()
+                    : null;
+                if (ssHid != null && !Objects.equals(ssHid, hid)) {
+                    throw new AccessDeniedException("Access denied: resource not in your hospital");
+                }
+            });
         surveillanceSheetRepository.deleteById(id);
         // orphanRemoval=true supprime MiniConsultation; ManyToMany nettoie la table de jointure.
+    }
+
+    private void assertSameHospital(Long entityHospitalId) {
+        currentHospitalProvider
+            .getCurrentHospitalId()
+            .ifPresent(current -> {
+                if (entityHospitalId != null && !Objects.equals(entityHospitalId, current)) {
+                    throw new AccessDeniedException("Access denied: resource not in your hospital");
+                }
+            });
     }
 }

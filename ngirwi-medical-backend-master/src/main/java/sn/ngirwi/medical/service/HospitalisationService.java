@@ -9,6 +9,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,7 @@ import sn.ngirwi.medical.repository.*;
 import sn.ngirwi.medical.service.dto.HospitalisationDTO;
 import sn.ngirwi.medical.service.dto.HospitalisationResumeDTO;
 import sn.ngirwi.medical.service.mapper.HospitalisationMapper;
+import sn.ngirwi.medical.service.CurrentHospitalProvider;
 
 @Service
 @Transactional
@@ -33,6 +35,7 @@ public class HospitalisationService {
     private final DossierMedicalRepository dossierMedicalRepository;
     private final BillRepository billRepository;
     private final HospitalisationMapper hospitalisationMapper;
+    private final CurrentHospitalProvider currentHospitalProvider;
 
     public HospitalisationService(
         HospitalisationRepository hospitalisationRepository,
@@ -40,7 +43,8 @@ public class HospitalisationService {
         PatientRepository patientRepository,
         DossierMedicalRepository dossierMedicalRepository,
         BillRepository billRepository,
-        HospitalisationMapper hospitalisationMapper
+        HospitalisationMapper hospitalisationMapper,
+        CurrentHospitalProvider currentHospitalProvider
     ) {
         this.hospitalisationRepository = hospitalisationRepository;
         this.surveillanceSheetRepository = surveillanceSheetRepository;
@@ -48,6 +52,7 @@ public class HospitalisationService {
         this.dossierMedicalRepository = dossierMedicalRepository;
         this.billRepository = billRepository;
         this.hospitalisationMapper = hospitalisationMapper;
+        this.currentHospitalProvider = currentHospitalProvider;
     }
 
     // -------------------------
@@ -63,6 +68,7 @@ public class HospitalisationService {
         Patient patient = patientRepository
             .findById(dto.getPatientId())
             .orElseThrow(() -> new IllegalArgumentException("Patient not found id=" + dto.getPatientId()));
+        assertSameHospital(patient.getHospitalId());
 
         // Prevent multiple STARTED hospitalisations for same patient
         if (
@@ -89,10 +95,19 @@ public class HospitalisationService {
 
         // Handle dossierMedical association:
         if (dto.getDossierMedicalId() != null) {
-            if (!dossierMedicalRepository.existsById(dto.getDossierMedicalId())) {
-                throw new IllegalArgumentException("DossierMedical not found id=" + dto.getDossierMedicalId());
+            DossierMedical dossierMedical = dossierMedicalRepository
+                .findById(dto.getDossierMedicalId())
+                .orElseThrow(() -> new IllegalArgumentException("DossierMedical not found id=" + dto.getDossierMedicalId()));
+            // Verify same hospital: dossierMedical must belong to the same patient or same hospital
+            if (dossierMedical.getPatient() != null) {
+                Long dossierHospId = dossierMedical.getPatient().getHospitalId();
+                if (!Objects.equals(patient.getHospitalId(), dossierHospId)) {
+                    throw new IllegalArgumentException(
+                        "DossierMedical id=" + dto.getDossierMedicalId() + " does not belong to the same hospital as the patient"
+                    );
+                }
             }
-            entity.setDossierMedical(hospitalisationMapper.fromDossierMedicalId(dto.getDossierMedicalId()));
+            entity.setDossierMedical(dossierMedical);
         } else {
             // attach patient's dossierMedical if present
             if (patient.getDossierMedical() != null) {
@@ -102,7 +117,7 @@ public class HospitalisationService {
 
         // Attach surveillance sheets if provided (by ids)
         if (dto.getSurveillanceSheetIds() != null && !dto.getSurveillanceSheetIds().isEmpty()) {
-            Set<SurveillanceSheet> sheets = fetchAndValidateSurveillanceSheetsForAttach(dto.getSurveillanceSheetIds(), null);
+            Set<SurveillanceSheet> sheets = fetchAndValidateSurveillanceSheetsForAttach(dto.getSurveillanceSheetIds(), null, patient.getHospitalId());
             // assign hospitalisation reference on them AFTER save (or set now to entity)
             sheets.forEach(s -> s.setHospitalisation(entity));
             entity.setSurveillanceSheets(sheets);
@@ -131,6 +146,28 @@ public class HospitalisationService {
         }
     }
 
+    /**
+     * Return the latest active hospitalisation for a patient (STARTED/ONGOING),
+     * or, if none, the latest hospitalisation (by entryDate).
+     *
+     * Used by UI screens that expect a single hospitalisation object.
+     */
+    @Transactional(readOnly = true)
+    public Optional<HospitalisationDTO> findLatestForPatient(Long patientId) {
+        if (patientId == null) {
+            throw new IllegalArgumentException("patientId is required");
+        }
+
+        Patient patient = patientRepository.findById(patientId).orElseThrow(() -> new IllegalArgumentException("Patient not found id=" + patientId));
+        assertSameHospital(patient.getHospitalId());
+
+        List<HospitalisationStatus> activeStatuses = Arrays.asList(HospitalisationStatus.STARTED, HospitalisationStatus.ONGOING);
+        return hospitalisationRepository
+            .findFirstByPatient_IdAndStatusInOrderByEntryDateDesc(patientId, activeStatuses)
+            .or(() -> hospitalisationRepository.findFirstByPatient_IdOrderByEntryDateDesc(patientId))
+            .map(hospitalisationMapper::toDto);
+    }
+
     // -------------------------
     // Update (full)
     // -------------------------
@@ -143,6 +180,8 @@ public class HospitalisationService {
         Hospitalisation existing = hospitalisationRepository
             .findById(dto.getId())
             .orElseThrow(() -> new NoSuchElementException("Hospitalisation not found id=" + dto.getId()));
+        Long existingHospId = existing.getPatient() != null ? existing.getPatient().getHospitalId() : null;
+        assertSameHospital(existingHospId);
 
         // Patient change is not allowed
         if (
@@ -179,7 +218,7 @@ public class HospitalisationService {
 
         // Handle surveillance sheets replacement (if provided)
         if (dto.getSurveillanceSheetIds() != null) {
-            Set<SurveillanceSheet> sheets = fetchAndValidateSurveillanceSheetsForAttach(dto.getSurveillanceSheetIds(), existing.getId());
+            Set<SurveillanceSheet> sheets = fetchAndValidateSurveillanceSheetsForAttach(dto.getSurveillanceSheetIds(), existing.getId(), existingHospId);
             sheets.forEach(s -> s.setHospitalisation(toSave));
             toSave.setSurveillanceSheets(sheets);
         } else {
@@ -227,6 +266,8 @@ public class HospitalisationService {
         return hospitalisationRepository
             .findById(dto.getId())
             .map(existing -> {
+                Long existingHospId = existing.getPatient() != null ? existing.getPatient().getHospitalId() : null;
+                assertSameHospital(existingHospId);
                 if (dto.getEntryDate() != null) existing.setEntryDate(dto.getEntryDate());
                 if (dto.getReleaseDate() != null) {
                     if (existing.getEntryDate() != null && dto.getReleaseDate().isBefore(existing.getEntryDate())) {
@@ -258,7 +299,8 @@ public class HospitalisationService {
                 if (dto.getSurveillanceSheetIds() != null) {
                     Set<SurveillanceSheet> sheets = fetchAndValidateSurveillanceSheetsForAttach(
                         dto.getSurveillanceSheetIds(),
-                        existing.getId()
+                        existing.getId(),
+                        existingHospId
                     );
                     sheets.forEach(s -> s.setHospitalisation(existing));
                     existing.setSurveillanceSheets(sheets);
@@ -275,12 +317,21 @@ public class HospitalisationService {
     // -------------------------
     @Transactional(readOnly = true)
     public Page<HospitalisationDTO> findAll(Pageable pageable) {
-        return hospitalisationRepository.findAll(pageable).map(hospitalisationMapper::toDto);
+        Long hid = currentHospitalProvider.getCurrentHospitalId().orElse(null);
+        Page<Hospitalisation> page = hospitalisationRepository.search(null, null, null, null, hid, pageable);
+        return page.map(hospitalisationMapper::toDto);
     }
 
     @Transactional(readOnly = true)
     public Optional<HospitalisationDTO> findOne(Long id) {
-        return hospitalisationRepository.findById(id).map(hospitalisationMapper::toDto);
+        return currentHospitalProvider
+            .getCurrentHospitalId()
+            .map(hid -> hospitalisationRepository.findById(id).filter(h -> {
+                Long pid = h.getPatient() != null ? h.getPatient().getHospitalId() : null;
+                return pid == null || hid.equals(pid);
+            }))
+            .orElseGet(() -> hospitalisationRepository.findById(id))
+            .map(hospitalisationMapper::toDto);
     }
 
     @Transactional(readOnly = true)
@@ -293,13 +344,15 @@ public class HospitalisationService {
                 throw new IllegalArgumentException("Invalid status: " + statusStr);
             }
         }
-        return hospitalisationRepository.search(patientId, status, null, null, pageable).map(hospitalisationMapper::toDto);
+        Long hid = currentHospitalProvider.getCurrentHospitalId().orElse(null);
+        return hospitalisationRepository.search(patientId, status, null, null, hid, pageable).map(hospitalisationMapper::toDto);
     }
 
     @Transactional(readOnly = true)
     public Page<HospitalisationDTO> findActive(String service, Pageable pageable) {
         HospitalisationStatus started = HospitalisationStatus.STARTED;
-        Page<Hospitalisation> page = hospitalisationRepository.search(null, started, null, null, pageable);
+        Long hid = currentHospitalProvider.getCurrentHospitalId().orElse(null);
+        Page<Hospitalisation> page = hospitalisationRepository.search(null, started, null, null, hid, pageable);
         if (service == null) {
             return page.map(hospitalisationMapper::toDto);
         } else {
@@ -322,7 +375,8 @@ public class HospitalisationService {
                 throw new IllegalArgumentException("Invalid status: " + statusStr);
             }
         }
-        Page<Hospitalisation> page = hospitalisationRepository.search(patientId, status, from, to, pageable);
+        Long hid = currentHospitalProvider.getCurrentHospitalId().orElse(null);
+        Page<Hospitalisation> page = hospitalisationRepository.search(patientId, status, from, to, hid, pageable);
         if (service == null) {
             return page.map(hospitalisationMapper::toDto);
         } else {
@@ -342,6 +396,8 @@ public class HospitalisationService {
         Hospitalisation existing = hospitalisationRepository
             .findById(id)
             .orElseThrow(() -> new NoSuchElementException("Hospitalisation not found id=" + id));
+        Long existingHospId = existing.getPatient() != null ? existing.getPatient().getHospitalId() : null;
+        assertSameHospital(existingHospId);
 
         if (existing.getStatus() == HospitalisationStatus.DONE) {
             throw new IllegalStateException("Hospitalisation already closed");
@@ -360,6 +416,16 @@ public class HospitalisationService {
 
         Hospitalisation saved = hospitalisationRepository.save(existing);
 
+        // Calculate and persist totalAmount when closing
+        try {
+            HospitalisationResumeDTO resume = calculateResume(saved.getId());
+            saved.setTotalAmount(resume.getTotalAmount());
+            saved = hospitalisationRepository.save(saved);
+        } catch (Exception e) {
+            log.warn("Failed to calculate totalAmount on close for hospitalisation id={}: {}", saved.getId(), e.getMessage());
+            // Continue without totalAmount if calculation fails
+        }
+
         if (generateBill) {
             createBillForHospitalisation(saved);
         }
@@ -371,16 +437,18 @@ public class HospitalisationService {
     // Delete
     // -------------------------
     public void delete(Long id) {
-        if (!hospitalisationRepository.existsById(id)) {
-            throw new NoSuchElementException("Hospitalisation not found id=" + id);
-        }
+        Hospitalisation existing = hospitalisationRepository
+            .findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Hospitalisation not found id=" + id));
+        Long existingHospId = existing.getPatient() != null ? existing.getPatient().getHospitalId() : null;
+        assertSameHospital(existingHospId);
         hospitalisationRepository.deleteById(id);
     }
 
     // -------------------------
     // Helpers
     // -------------------------
-    private Set<SurveillanceSheet> fetchAndValidateSurveillanceSheetsForAttach(Set<Long> ids, Long targetHospitalisationId) {
+    private Set<SurveillanceSheet> fetchAndValidateSurveillanceSheetsForAttach(Set<Long> ids, Long targetHospitalisationId, Long expectedHospitalId) {
         if (ids == null || ids.isEmpty()) return Collections.emptySet();
 
         Iterable<SurveillanceSheet> found = surveillanceSheetRepository.findAllById(ids);
@@ -394,6 +462,18 @@ public class HospitalisationService {
         }
 
         for (SurveillanceSheet s : sheets) {
+            // Verify same hospital: sheet must belong to the same hospital as expected
+            if (expectedHospitalId != null) {
+                Long sheetHospitalId = s.getHospitalisation() != null && s.getHospitalisation().getPatient() != null
+                    ? s.getHospitalisation().getPatient().getHospitalId()
+                    : null;
+                if (sheetHospitalId != null && !Objects.equals(expectedHospitalId, sheetHospitalId)) {
+                    throw new IllegalArgumentException(
+                        "SurveillanceSheet id=" + s.getId() + " does not belong to the same hospital (expected: " + expectedHospitalId + ", found: " + sheetHospitalId + ")"
+                    );
+                }
+            }
+            // Check if already attached to another hospitalisation
             if (s.getHospitalisation() != null) {
                 Long attachedHospId = s.getHospitalisation().getId();
                 if (targetHospitalisationId == null || !Objects.equals(attachedHospId, targetHospitalisationId)) {
@@ -443,6 +523,8 @@ public class HospitalisationService {
         Hospitalisation h = hospitalisationRepository
             .findById(hospitalisationId)
             .orElseThrow(() -> new NoSuchElementException("Hospitalisation not found: " + hospitalisationId));
+        Long hid = h.getPatient() != null ? h.getPatient().getHospitalId() : null;
+        assertSameHospital(hid);
 
         if (h.getReleaseDate() == null) {
             throw new IllegalStateException("releaseDate est requis pour calculer le coût total (fin d'hospitalisation).");
@@ -515,6 +597,8 @@ public class HospitalisationService {
         Hospitalisation h = hospitalisationRepository
             .findById(hospitalisationId)
             .orElseThrow(() -> new NoSuchElementException("Hospitalisation not found: " + hospitalisationId));
+        Long hid = h.getPatient() != null ? h.getPatient().getHospitalId() : null;
+        assertSameHospital(hid);
 
         h.setTotalAmount(dto.getTotalAmount());
         hospitalisationRepository.save(h);
@@ -531,5 +615,15 @@ public class HospitalisationService {
 
     private static BigDecimal nvl(BigDecimal v) {
         return v == null ? BigDecimal.ZERO : v;
+    }
+
+    private void assertSameHospital(Long entityHospitalId) {
+        currentHospitalProvider
+            .getCurrentHospitalId()
+            .ifPresent(current -> {
+                if (entityHospitalId != null && !Objects.equals(entityHospitalId, current)) {
+                    throw new AccessDeniedException("Access denied: resource not in your hospital");
+                }
+            });
     }
 }

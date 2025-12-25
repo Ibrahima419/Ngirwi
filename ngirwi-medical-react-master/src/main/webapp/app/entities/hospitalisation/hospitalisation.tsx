@@ -11,7 +11,7 @@ import { useAppDispatch, useAppSelector } from 'app/config/store';
 
 import { IHospitalisation } from 'app/shared/model/hospitalisation.model';
 import { getEntities } from './hospitalisation.reducer';
-import { getEntity as getPatient, getEntitiesBis } from '../patient/patient.reducer';
+import { getEntity as getPatient, getEntitiesBis, reset as resetPatient } from '../patient/patient.reducer';
 // header rendered inline on this page for tighter control
 
 export const Hospitalisation = () => {
@@ -43,7 +43,12 @@ export const Hospitalisation = () => {
         sort: `${paginationState.sort},${paginationState.order}`,
       })
     );
-    if (idPatient) dispatch(getPatient(idPatient));
+    if (idPatient) {
+      dispatch(getPatient(idPatient));
+    } else {
+      // Avoid showing stale patient info when navigating back to global list
+      dispatch(resetPatient());
+    }
     // Fetch patient directory to enable name/number search and display fallbacks
     dispatch(
       getEntitiesBis({
@@ -137,6 +142,7 @@ export const Hospitalisation = () => {
   const countOngoing = base.filter(h => h.status === 'STARTED' || h.status === 'ONGOING').length;
   const countDone = base.filter(h => h.status === 'DONE').length;
   const totalAmount = base.reduce((acc, h) => acc + (h.totalAmount || 0), 0);
+  const hasAnyTotal = base.some(h => h.totalAmount !== null && h.totalAmount !== undefined);
 
   return (
     <div
@@ -337,7 +343,11 @@ export const Hospitalisation = () => {
 
                     {/* Cost */}
                     <td className="px-3 py-2 text-end" style={{ whiteSpace: 'nowrap' }}>
-                      {formatFcfa(h.totalAmount || 0)}
+                      {h.totalAmount === null || h.totalAmount === undefined ? (
+                        <span className="text-muted">—</span>
+                      ) : (
+                        formatFcfa(h.totalAmount)
+                      )}
                     </td>
 
                     {/* Actions */}

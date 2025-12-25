@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Add auditing columns required by AbstractAuditingEntity -->
+    <changeSet id="20251225104000-mini-consultation-audit-columns" author="ai">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <tableExists tableName="mini_consultation"/>
+            <not>
+                <columnExists tableName="mini_consultation" columnName="created_by"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="mini_consultation">
+            <column name="created_by" type="varchar(50)"/>
+            <column name="created_date" type="timestamp"/>
+            <column name="last_modified_by" type="varchar(50)"/>
+            <column name="last_modified_date" type="timestamp"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>
+

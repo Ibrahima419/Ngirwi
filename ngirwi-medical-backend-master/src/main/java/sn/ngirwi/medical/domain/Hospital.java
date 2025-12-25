@@ -2,6 +2,7 @@ package sn.ngirwi.medical.domain;
 
 import java.io.Serializable;
 import javax.persistence.*;
+import javax.validation.constraints.NotBlank;
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 
@@ -22,13 +23,16 @@ public class Hospital implements Serializable {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "name")
+    @NotBlank
+    @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "adress")
+    @NotBlank
+    @Column(name = "adress", nullable = false)
     private String adress;
 
-    @Column(name = "phone")
+    @NotBlank
+    @Column(name = "phone", nullable = false)
     private String phone;
 
     @Lob

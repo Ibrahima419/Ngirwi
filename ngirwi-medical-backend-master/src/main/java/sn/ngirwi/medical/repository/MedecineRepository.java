@@ -16,4 +16,11 @@ public interface MedecineRepository extends JpaRepository<Medecine, Long> {
     boolean existsByNameAndDurationAndFrequencyAndOrdonance_Id(String name, Long duration, Double frequency, Long id);
 
     Medecine findByNameAndDurationAndFrequencyAndOrdonance_Id(String name, Long duration, Double frequency, Long id);
+
+    org.springframework.data.domain.Page<Medecine> findByOrdonance_Consultation_Patient_HospitalId(
+        Long hospitalId,
+        org.springframework.data.domain.Pageable pageable
+    );
+
+    java.util.Optional<Medecine> findByIdAndOrdonance_Consultation_Patient_HospitalId(Long id, Long hospitalId);
 }

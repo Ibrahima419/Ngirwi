@@ -13,6 +13,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import sn.ngirwi.medical.config.Constants;
 import sn.ngirwi.medical.domain.Authority;
 import sn.ngirwi.medical.domain.User;
@@ -32,6 +33,8 @@ import tech.jhipster.security.RandomUtil;
 public class UserService {
 
     private final Logger log = LoggerFactory.getLogger(UserService.class);
+
+    public static final String BOOTSTRAP_ADMIN_LOGIN = "admin";
 
     private final UserRepository userRepository;
 
@@ -149,7 +152,15 @@ public class UserService {
 
     public User createUser(AdminUserDTO userDTO) {
         User user = new User();
-        user.setLogin(userDTO.getLogin().toLowerCase());
+        // Enforce login=email for all accounts created via admin, except the bootstrap "admin" account.
+        if (!BOOTSTRAP_ADMIN_LOGIN.equalsIgnoreCase(userDTO.getLogin())) {
+            if (!StringUtils.hasText(userDTO.getEmail())) {
+                throw new IllegalArgumentException("Email is required");
+            }
+            user.setLogin(userDTO.getEmail().trim().toLowerCase());
+        } else {
+            user.setLogin(BOOTSTRAP_ADMIN_LOGIN);
+        }
         user.setFirstName(userDTO.getFirstName());
         user.setLastName(userDTO.getLastName());
         if (userDTO.getEmail() != null) {
@@ -196,7 +207,15 @@ public class UserService {
             .map(Optional::get)
             .map(user -> {
                 this.clearUserCaches(user);
-                user.setLogin(userDTO.getLogin().toLowerCase());
+                // Enforce login=email for all accounts, except the bootstrap "admin" user.
+                if (!BOOTSTRAP_ADMIN_LOGIN.equalsIgnoreCase(user.getLogin())) {
+                    if (!StringUtils.hasText(userDTO.getEmail())) {
+                        throw new IllegalArgumentException("Email is required");
+                    }
+                    user.setLogin(userDTO.getEmail().trim().toLowerCase());
+                } else {
+                    user.setLogin(BOOTSTRAP_ADMIN_LOGIN);
+                }
                 user.setFirstName(userDTO.getFirstName());
                 user.setLastName(userDTO.getLastName());
                 if (userDTO.getEmail() != null) {

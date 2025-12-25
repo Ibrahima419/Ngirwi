@@ -4,6 +4,10 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import javax.validation.Valid;
+import javax.validation.constraints.*;
+import javax.validation.constraints.DecimalMax;
+import javax.validation.constraints.DecimalMin;
 
 // include collections for medications and acts to match frontend
 
@@ -11,18 +15,32 @@ public class SurveillanceSheetDTO implements Serializable {
 
     private Long id;
 
+    @NotNull
     private LocalDate sheetDate;
 
+    @DecimalMin(value = "30.0", message = "La température doit être d'au moins 30°C")
+    @DecimalMax(value = "45.0", message = "La température ne peut pas dépasser 45°C")
+    @Digits(integer = 2, fraction = 1, message = "La température doit avoir au plus 2 chiffres avant la virgule et 1 après")
     private BigDecimal temperature;
 
+    @Min(value = 0, message = "La tension systolique doit être positive ou nulle")
+    @Max(value = 300, message = "La tension systolique ne peut pas dépasser 300 mmHg")
     private Integer systolicBP;
 
+    @Min(value = 0, message = "La tension diastolique doit être positive ou nulle")
+    @Max(value = 200, message = "La tension diastolique ne peut pas dépasser 200 mmHg")
     private Integer diastolicBP;
 
+    @Min(value = 0, message = "Le pouls doit être positif ou nul")
+    @Max(value = 300, message = "Le pouls ne peut pas dépasser 300 bpm")
     private Integer pulseRate;
 
+    @Min(value = 0, message = "La fréquence respiratoire doit être positive ou nulle")
+    @Max(value = 120, message = "La fréquence respiratoire ne peut pas dépasser 120 rpm")
     private Integer respirationRate;
 
+    @Min(value = 0, message = "La saturation O2 doit être positive ou nulle")
+    @Max(value = 100, message = "La saturation O2 ne peut pas dépasser 100%")
     private Integer spo2;
 
     private String nursingNotes;
@@ -33,10 +51,14 @@ public class SurveillanceSheetDTO implements Serializable {
 
     private String administeredMedication;
 
+    @NotNull
     private Long hospitalisationId;
 
     // User-entered line items
+    @Valid
     private List<MedicationEntryDTO> medications;
+
+    @Valid
     private List<ActEntryDTO> acts;
 
     // Getters and setters

@@ -2,6 +2,8 @@ import React from 'react';
 import { Navigate, Route } from 'react-router-dom';
 
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
+import PrivateRoute from 'app/shared/auth/private-route';
+import { AUTHORITIES } from 'app/config/constants';
 
 import Patient from './patient';
 import DossierMedical from './dossier-medical';
@@ -22,8 +24,22 @@ export default () => {
       <ErrorBoundaryRoutes>
         {/* prettier-ignore */}
         <Route path="patient/*" element={<Patient />} />
-        <Route path="dossier-medical/*" element={<DossierMedical />} />
-        <Route path="consultation/*" element={<Consultation />} />
+        <Route
+          path="dossier-medical/*"
+          element={
+            <PrivateRoute hasAnyAuthorities={[AUTHORITIES.DOCTOR, AUTHORITIES.ADMIN]}>
+              <DossierMedical />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="consultation/*"
+          element={
+            <PrivateRoute hasAnyAuthorities={[AUTHORITIES.DOCTOR, AUTHORITIES.ADMIN]}>
+              <Consultation />
+            </PrivateRoute>
+          }
+        />
         <Route path="prescription/*" element={<Prescription />} />
         <Route path="medecine/*" element={<Medecine />} />
         <Route path="bill/*" element={<Bill />} />
@@ -31,7 +47,14 @@ export default () => {
         <Route path="bill-element/*" element={<BillElement />} />
 
         {/* custom routes */}
-        <Route path="hospital/*" element={<Hospital />} />
+        <Route
+          path="hospital/*"
+          element={
+            <PrivateRoute hasAnyAuthorities={[AUTHORITIES.ADMIN]}>
+              <Hospital />
+            </PrivateRoute>
+          }
+        />
         <Route path="surveillance-sheet/*" element={<SurveillanceSheet />} />
         <Route path="mini-consultation/*" element={<MiniConsultation />} />
         {/* jhipster-needle-add-route-path - JHipster will add routes here */}

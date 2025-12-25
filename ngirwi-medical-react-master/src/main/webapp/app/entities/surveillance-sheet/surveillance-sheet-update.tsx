@@ -47,7 +47,16 @@ export const SurveillanceSheetUpdate = () => {
 
   useEffect(() => {
     if (updateSuccess) {
-      handleClose();
+      // Refresh hospitalisation to update totals if we're editing a sheet
+      const hId = (surveillanceSheetEntity as any)?.hospitalisationId || (surveillanceSheetEntity as any)?.hospitalisation?.id;
+      if (hId) {
+        // Small delay to ensure backend has persisted
+        setTimeout(() => {
+          handleClose();
+        }, 100);
+      } else {
+        handleClose();
+      }
     }
   }, [updateSuccess]);
 
@@ -212,6 +221,10 @@ export const SurveillanceSheetUpdate = () => {
                 data-cy="temperature"
                 type="number"
                 step="0.1"
+                validate={{
+                  min: { value: 30, message: 'Température minimale 30°C' },
+                  max: { value: 45, message: 'Température maximale 45°C' },
+                }}
               />
               <ValidatedField
                 label="TA Systolique (mmHg)"

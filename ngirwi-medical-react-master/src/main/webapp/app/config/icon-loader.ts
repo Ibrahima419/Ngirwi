@@ -31,6 +31,9 @@ import { faUserPlus } from '@fortawesome/free-solid-svg-icons/faUserPlus';
 import { faUsers } from '@fortawesome/free-solid-svg-icons/faUsers';
 import { faUsersCog } from '@fortawesome/free-solid-svg-icons/faUsersCog';
 import { faWrench } from '@fortawesome/free-solid-svg-icons/faWrench';
+import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
+import { faPrint } from '@fortawesome/free-solid-svg-icons/faPrint';
+import { faFilePdf } from '@fortawesome/free-solid-svg-icons/faFilePdf';
 
 import { library } from '@fortawesome/fontawesome-svg-core';
 
@@ -41,10 +44,12 @@ export const loadIcons = () => {
     faBan,
     faBell,
     faBook,
+    faCheck,
     faCloud,
     faCogs,
     faDatabase,
     faEye,
+    faFilePdf,
     faFlag,
     faHeart,
     faHome,
@@ -52,6 +57,7 @@ export const loadIcons = () => {
     faLock,
     faPencilAlt,
     faPlus,
+    faPrint,
     faRoad,
     faSave,
     faSignInAlt,

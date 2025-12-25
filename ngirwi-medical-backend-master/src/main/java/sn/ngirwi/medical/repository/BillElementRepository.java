@@ -22,4 +22,8 @@ public interface BillElementRepository extends JpaRepository<BillElement, Long> 
         nativeQuery = true
     )
     java.math.BigDecimal computeTotalByBillId(@org.springframework.data.repository.query.Param("billId") Long billId);
+
+    org.springframework.data.domain.Page<BillElement> findByBill_Patient_HospitalId(Long hospitalId, org.springframework.data.domain.Pageable pageable);
+
+    java.util.Optional<BillElement> findByIdAndBill_Patient_HospitalId(Long id, Long hospitalId);
 }

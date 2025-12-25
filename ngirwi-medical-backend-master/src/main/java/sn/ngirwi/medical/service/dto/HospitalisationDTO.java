@@ -3,6 +3,11 @@ package sn.ngirwi.medical.service.dto;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Set;
+import javax.validation.constraints.DecimalMax;
+import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.PositiveOrZero;
 import sn.ngirwi.medical.domain.enumeration.HospitalisationStatus;
 
 public class HospitalisationDTO implements Serializable {
@@ -13,6 +18,7 @@ public class HospitalisationDTO implements Serializable {
 
     private Instant releaseDate;
 
+    @NotBlank
     private String doctorName;
 
     private HospitalisationStatus status;
@@ -27,16 +33,22 @@ public class HospitalisationDTO implements Serializable {
 
     private String service;
 
+    @NotNull
     private Long patientId;
 
     private Set<Long> surveillanceSheetIds;
 
+    @PositiveOrZero
     private java.math.BigDecimal dailyRate;
 
+    @PositiveOrZero
     private java.math.BigDecimal comfortFees;
 
+    @PositiveOrZero
     private java.math.BigDecimal feeOverrun;
 
+    @DecimalMin(value = "0", inclusive = true)
+    @DecimalMax(value = "100", inclusive = true)
     private java.math.BigDecimal insuranceCoveragePercent;
 
     private java.math.BigDecimal totalAmount; // read-only pour l'UI

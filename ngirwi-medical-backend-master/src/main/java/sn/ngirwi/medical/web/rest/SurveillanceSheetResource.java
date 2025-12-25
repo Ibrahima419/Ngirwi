@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import javax.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -57,7 +58,7 @@ public class SurveillanceSheetResource {
     // CREATE
     // --------------------------------------------------------------------------------------------
     @PostMapping("/surveillance-sheets")
-    public ResponseEntity<SurveillanceSheetDTO> create(@RequestBody SurveillanceSheetDTO dto) throws URISyntaxException {
+    public ResponseEntity<SurveillanceSheetDTO> create(@Valid @RequestBody SurveillanceSheetDTO dto) throws URISyntaxException {
         log.debug("REST to create SurveillanceSheet : {}", dto);
 
         if (dto.getId() != null) {
@@ -99,7 +100,7 @@ public class SurveillanceSheetResource {
     @PutMapping("/surveillance-sheets/{id}")
     public ResponseEntity<SurveillanceSheetDTO> update(
         @PathVariable(value = "id", required = false) final Long id,
-        @RequestBody SurveillanceSheetDTO dto
+        @Valid @RequestBody SurveillanceSheetDTO dto
     ) {
         log.debug("REST to update SurveillanceSheet : {}, {}", id, dto);
 

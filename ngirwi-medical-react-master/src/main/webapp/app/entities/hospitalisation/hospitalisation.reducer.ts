@@ -34,7 +34,7 @@ export const getEntity = createAsyncThunk(
 );
 
 export const getPatient = createAsyncThunk(
-  'hospitalisation/fetch_entity',
+  'hospitalisation/fetch_by_patient',
   async (id: string | number) => {
     const requestUrl = `${apiUrl}-patient/${id}`;
     return axios.get<IHospitalisation>(requestUrl);
@@ -94,6 +94,10 @@ export const HospitalisationSlice = createEntitySlice({
         state.loading = false;
         state.entity = action.payload.data;
       })
+      .addCase(getPatient.fulfilled, (state, action) => {
+        state.loading = false;
+        state.entity = action.payload.data;
+      })
       .addCase(deleteEntity.fulfilled, state => {
         state.updating = false;
         state.updateSuccess = true;
@@ -115,7 +119,7 @@ export const HospitalisationSlice = createEntitySlice({
         state.updateSuccess = true;
         state.entity = action.payload.data;
       })
-      .addMatcher(isPending(getEntities, getEntity), state => {
+      .addMatcher(isPending(getEntities, getEntity, getPatient), state => {
         state.errorMessage = null;
         state.updateSuccess = false;
         state.loading = true;

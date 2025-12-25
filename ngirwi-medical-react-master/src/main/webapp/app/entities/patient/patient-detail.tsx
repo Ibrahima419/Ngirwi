@@ -7,7 +7,7 @@ import { translateGender, translateMaritalStatus, translateBloodType } from 'app
 import { APP_DATE_FORMAT, AUTHORITIES } from 'app/config/constants';
 import { useAppDispatch, useAppSelector } from 'app/config/store';
 
-import { getEntity as getHospital } from '../hospital/hospital.reducer';
+import { getMyHospital } from '../hospital/hospital.reducer';
 import { getEntity } from './patient.reducer';
 import { getPatient, reset as resetDossier } from '../dossier-medical/dossier-medical.reducer';
 import { getPatient as getHospitalisationPatient, reset as resetHospitalisation } from '../hospitalisation/hospitalisation.reducer';
@@ -69,7 +69,7 @@ export const PatientDetail = () => {
       dispatch(getHospitalisationPatient(id));
     }
     if (account?.hospitalId !== undefined && account?.hospitalId !== null) {
-      dispatch(getHospital(account.hospitalId));
+      dispatch(getMyHospital());
     }
   }, [dispatch, id, account?.hospitalId]);
 

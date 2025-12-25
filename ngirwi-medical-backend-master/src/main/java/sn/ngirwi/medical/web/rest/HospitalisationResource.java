@@ -3,6 +3,7 @@ package sn.ngirwi.medical.web.rest;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -152,6 +153,19 @@ public class HospitalisationResource {
         log.debug("REST request to get Hospitalisation : {}", id);
         Optional<HospitalisationDTO> dto = hospitalisationService.findOne(id);
         return ResponseUtil.wrapOrNotFound(dto);
+    }
+
+    /**
+     * GET /hospitalisations-patient/{patientId} : get a patient's latest active hospitalisation (or latest).
+     *
+     * This endpoint exists to support UI screens that expect a single object.
+     * If no hospitalisation exists for the patient, returns an empty JSON object.
+     */
+    @GetMapping("/hospitalisations-patient/{patientId}")
+    public ResponseEntity<Object> getHospitalisationForPatient(@PathVariable Long patientId) {
+        log.debug("REST request to get Hospitalisation for patientId={}", patientId);
+        Optional<HospitalisationDTO> dto = hospitalisationService.findLatestForPatient(patientId);
+        return dto.<ResponseEntity<Object>>map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.ok(Collections.emptyMap()));
     }
 
     /**

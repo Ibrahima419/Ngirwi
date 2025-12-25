@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HiOutlineClipboard } from 'react-icons/hi';
+import { HiOutlineClipboard, HiOutlineOfficeBuilding } from 'react-icons/hi';
 import { MdOutlinePeopleOutline } from 'react-icons/md';
 import { CgCalendarDates } from 'react-icons/cg';
 import { FaHome } from 'react-icons/fa';
@@ -167,6 +167,34 @@ const SideBar = (props: ISideBarProps) => {
                 }}
               >
                 Patients
+              </h6>
+            </Link>
+            <Link
+              to="/hospital?page=1&sort=id,asc"
+              hidden={!isAdmin}
+              style={{
+                paddingLeft: '1.5vw',
+                marginBottom: '1vh',
+                width: '14.06vw',
+                color: '#54BFD0',
+                display: 'flex',
+                alignItems: 'flex-start',
+                fontSize: '5px',
+                gap: '5%',
+                fontFamily: 'Mulish',
+                textDecoration: 'none',
+              }}
+            >
+              <div>{React.createElement(HiOutlineOfficeBuilding, { size: '15' })}</div>
+              <h6
+                onMouseOver={changeColor}
+                onMouseLeave={setColor}
+                style={{
+                  fontFamily: 'Mulish',
+                  color: '#3C5681',
+                }}
+              >
+                Hôpitaux
               </h6>
             </Link>
             <Link

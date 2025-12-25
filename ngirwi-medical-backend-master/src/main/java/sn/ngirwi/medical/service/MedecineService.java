@@ -6,12 +6,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sn.ngirwi.medical.domain.Medecine;
 import sn.ngirwi.medical.repository.MedecineRepository;
+import sn.ngirwi.medical.repository.PrescriptionRepository;
 import sn.ngirwi.medical.service.dto.MedecineDTO;
 import sn.ngirwi.medical.service.mapper.MedecineMapper;
+import sn.ngirwi.medical.service.CurrentHospitalProvider;
 
 /**
  * Service Implementation for managing {@link Medecine}.
@@ -25,10 +28,19 @@ public class MedecineService {
     private final MedecineRepository medecineRepository;
 
     private final MedecineMapper medecineMapper;
+    private final CurrentHospitalProvider currentHospitalProvider;
+    private final PrescriptionRepository prescriptionRepository;
 
-    public MedecineService(MedecineRepository medecineRepository, MedecineMapper medecineMapper) {
+    public MedecineService(
+        MedecineRepository medecineRepository,
+        MedecineMapper medecineMapper,
+        CurrentHospitalProvider currentHospitalProvider,
+        PrescriptionRepository prescriptionRepository
+    ) {
         this.medecineRepository = medecineRepository;
         this.medecineMapper = medecineMapper;
+        this.currentHospitalProvider = currentHospitalProvider;
+        this.prescriptionRepository = prescriptionRepository;
     }
 
     /**
@@ -39,6 +51,17 @@ public class MedecineService {
      */
     public MedecineDTO save(MedecineDTO medecineDTO) {
         log.debug("Request to save Medecine : {}", medecineDTO);
+        Long ordId = medecineDTO.getOrdonance() != null ? medecineDTO.getOrdonance().getId() : null;
+        if (ordId != null) {
+            currentHospitalProvider
+                .getCurrentHospitalId()
+                .ifPresent(hid -> {
+                    // ensure prescription belongs to this hospital
+                    prescriptionRepository
+                        .findByIdAndConsultation_Patient_HospitalId(ordId, hid)
+                        .orElseThrow(() -> new AccessDeniedException("Access denied: prescription not in your hospital"));
+                });
+        }
         Medecine medecine = medecineMapper.toEntity(medecineDTO);
         medecine = medecineRepository.save(medecine);
         return medecineMapper.toDto(medecine);
@@ -52,6 +75,25 @@ public class MedecineService {
      */
     public MedecineDTO update(MedecineDTO medecineDTO) {
         log.debug("Request to update Medecine : {}", medecineDTO);
+        if (medecineDTO.getId() == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        // ensure existing belongs to current hospital
+        currentHospitalProvider
+            .getCurrentHospitalId()
+            .ifPresent(hid -> {
+                Medecine existing = medecineRepository
+                    .findById(medecineDTO.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Medecine not found id=" + medecineDTO.getId()));
+                Long existingHid = existing.getOrdonance() != null &&
+                        existing.getOrdonance().getConsultation() != null &&
+                        existing.getOrdonance().getConsultation().getPatient() != null
+                    ? existing.getOrdonance().getConsultation().getPatient().getHospitalId()
+                    : null;
+                if (existingHid != null && !java.util.Objects.equals(existingHid, hid)) {
+                    throw new AccessDeniedException("Access denied: resource not in your hospital");
+                }
+            });
         Medecine medecine = medecineMapper.toEntity(medecineDTO);
         medecine = medecineRepository.save(medecine);
         return medecineMapper.toDto(medecine);
@@ -69,6 +111,18 @@ public class MedecineService {
         return medecineRepository
             .findById(medecineDTO.getId())
             .map(existingMedecine -> {
+                currentHospitalProvider
+                    .getCurrentHospitalId()
+                    .ifPresent(hid -> {
+                        Long existingHid = existingMedecine.getOrdonance() != null &&
+                                existingMedecine.getOrdonance().getConsultation() != null &&
+                                existingMedecine.getOrdonance().getConsultation().getPatient() != null
+                            ? existingMedecine.getOrdonance().getConsultation().getPatient().getHospitalId()
+                            : null;
+                        if (existingHid != null && !java.util.Objects.equals(existingHid, hid)) {
+                            throw new AccessDeniedException("Access denied: resource not in your hospital");
+                        }
+                    });
                 medecineMapper.partialUpdate(existingMedecine, medecineDTO);
 
                 return existingMedecine;
@@ -86,7 +140,11 @@ public class MedecineService {
     @Transactional(readOnly = true)
     public Page<MedecineDTO> findAll(Pageable pageable) {
         log.debug("Request to get all Medecines");
-        return medecineRepository.findAll(pageable).map(medecineMapper::toDto);
+        return currentHospitalProvider
+            .getCurrentHospitalId()
+            .map(hid -> medecineRepository.findByOrdonance_Consultation_Patient_HospitalId(hid, pageable))
+            .orElseGet(() -> medecineRepository.findAll(pageable))
+            .map(medecineMapper::toDto);
     }
 
     @Transactional(readOnly = true)
@@ -104,7 +162,11 @@ public class MedecineService {
     @Transactional(readOnly = true)
     public Optional<MedecineDTO> findOne(Long id) {
         log.debug("Request to get Medecine : {}", id);
-        return medecineRepository.findById(id).map(medecineMapper::toDto);
+        return currentHospitalProvider
+            .getCurrentHospitalId()
+            .map(hid -> medecineRepository.findByIdAndOrdonance_Consultation_Patient_HospitalId(id, hid))
+            .orElseGet(() -> medecineRepository.findById(id))
+            .map(medecineMapper::toDto);
     }
 
     /**
@@ -114,6 +176,21 @@ public class MedecineService {
      */
     public void delete(Long id) {
         log.debug("Request to delete Medecine : {}", id);
+        currentHospitalProvider
+            .getCurrentHospitalId()
+            .ifPresent(hid -> {
+                Medecine existing = medecineRepository
+                    .findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Medecine not found id=" + id));
+                Long existingHid = existing.getOrdonance() != null &&
+                        existing.getOrdonance().getConsultation() != null &&
+                        existing.getOrdonance().getConsultation().getPatient() != null
+                    ? existing.getOrdonance().getConsultation().getPatient().getHospitalId()
+                    : null;
+                if (existingHid != null && !java.util.Objects.equals(existingHid, hid)) {
+                    throw new AccessDeniedException("Access denied: resource not in your hospital");
+                }
+            });
         medecineRepository.deleteById(id);
     }
 }

@@ -16,6 +16,7 @@ const initialState: EntityState<IHospital> = {
 };
 
 const apiUrl = 'api/hospitals';
+const meHospitalUrl = 'api/me/hospital';
 
 // Actions
 
@@ -29,6 +30,14 @@ export const getEntity = createAsyncThunk(
   async (id: string | number) => {
     const requestUrl = `${apiUrl}/${id}`;
     return axios.get<IHospital>(requestUrl);
+  },
+  { serializeError: serializeAxiosError }
+);
+
+export const getMyHospital = createAsyncThunk(
+  'hospital/fetch_my_hospital',
+  async () => {
+    return axios.get<IHospital>(meHospitalUrl);
   },
   { serializeError: serializeAxiosError }
 );
@@ -85,6 +94,10 @@ export const HospitalSlice = createEntitySlice({
         state.loading = false;
         state.entity = action.payload.data;
       })
+      .addCase(getMyHospital.fulfilled, (state, action) => {
+        state.loading = false;
+        state.entity = action.payload.data;
+      })
       .addCase(deleteEntity.fulfilled, state => {
         state.updating = false;
         state.updateSuccess = true;
@@ -106,7 +119,7 @@ export const HospitalSlice = createEntitySlice({
         state.updateSuccess = true;
         state.entity = action.payload.data;
       })
-      .addMatcher(isPending(getEntities, getEntity), state => {
+      .addMatcher(isPending(getEntities, getEntity, getMyHospital), state => {
         state.errorMessage = null;
         state.updateSuccess = false;
         state.loading = true;

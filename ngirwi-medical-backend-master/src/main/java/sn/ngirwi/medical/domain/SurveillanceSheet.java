@@ -35,7 +35,9 @@ public class SurveillanceSheet extends AbstractAuditingEntity implements Seriali
     @Column(name = "sheet_date", nullable = false)
     private LocalDate sheetDate;
 
-    @Digits(integer = 2, fraction = 1)
+    @DecimalMin(value = "30.0", message = "La température doit être d'au moins 30°C")
+    @DecimalMax(value = "45.0", message = "La température ne peut pas dépasser 45°C")
+    @Digits(integer = 2, fraction = 1, message = "La température doit avoir au plus 2 chiffres avant la virgule et 1 après")
     @Column(name = "temperature", precision = 3, scale = 1)
     private BigDecimal temperature;
 

@@ -28,10 +28,14 @@
     <include file="config/liquibase/changelog/20221208154112_added_entity_SurveillanceSheet.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20240704175210_added_entity_Hospital.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/202510180001_extend_hospitalisation.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20251225094500_hospitalisation_auditing_columns.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/202510180002_surveillance_collections_and_unique.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20251225103000_surveillance_sheet_auditing_columns.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/202510180003_create_mini_consultation.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20251225104000_mini_consultation_auditing_columns.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/202510180004_active_hospitalisation_partial_unique_pg.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-changelog - JHipster will add liquibase changelogs here -->
+    <include file="config/liquibase/changelog/20251220220000_hospital_not_null_fields.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20220910204513_added_entity_constraints_DossierMedical.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20220910204514_added_entity_constraints_Consultation.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20220910204515_added_entity_constraints_Prescription.xml" relativeToChangelogFile="false"/>

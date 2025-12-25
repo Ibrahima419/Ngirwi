@@ -14,4 +14,8 @@ import sn.ngirwi.medical.domain.Bill;
 @Repository
 public interface BillRepository extends JpaRepository<Bill, Long> {
     Page<Bill> findByAuthorIn(Collection<String> authors, Pageable pageable);
+
+    Page<Bill> findByPatient_HospitalId(Long hospitalId, Pageable pageable);
+
+    java.util.Optional<Bill> findByIdAndPatient_HospitalId(Long id, Long hospitalId);
 }

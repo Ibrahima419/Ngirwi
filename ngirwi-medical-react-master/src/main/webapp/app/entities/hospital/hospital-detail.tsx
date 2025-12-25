@@ -20,53 +20,69 @@ export const HospitalDetail = () => {
 
   const hospitalEntity = useAppSelector(state => state.hospital.entity);
   return (
-    <Row>
-      <Col md="8">
-        <h2 data-cy="hospitalDetailsHeading">Hospital</h2>
-        <dl className="jh-entity-details">
-          <dt>
-            <span id="id">ID</span>
-          </dt>
-          <dd>{hospitalEntity.id}</dd>
-          <dt>
-            <span id="name">Name</span>
-          </dt>
-          <dd>{hospitalEntity.name}</dd>
-          <dt>
-            <span id="adress">Adress</span>
-          </dt>
-          <dd>{hospitalEntity.adress}</dd>
-          <dt>
-            <span id="phone">Phone</span>
-          </dt>
-          <dd>{hospitalEntity.phone}</dd>
-          <dt>
-            <span id="logo">Logo</span>
-          </dt>
-          <dd>
-            {hospitalEntity.logo ? (
-              <div>
-                {hospitalEntity.logoContentType ? (
-                  <a onClick={openFile(hospitalEntity.logoContentType, hospitalEntity.logo)}>
-                    <img src={`data:${hospitalEntity.logoContentType};base64,${hospitalEntity.logo}`} style={{ maxHeight: '30px' }} />
-                  </a>
-                ) : null}
-                <span>
-                  {hospitalEntity.logoContentType}, {byteSize(hospitalEntity.logo)}
-                </span>
-              </div>
-            ) : null}
-          </dd>
-        </dl>
-        <Button tag={Link} to="/hospital" replace color="info" data-cy="entityDetailsBackButton">
-          <FontAwesomeIcon icon="arrow-left" /> <span className="d-none d-md-inline">Retour</span>
-        </Button>
-        &nbsp;
-        <Button tag={Link} to={`/hospital/${hospitalEntity.id}/edit`} replace color="primary">
-          <FontAwesomeIcon icon="pencil-alt" /> <span className="d-none d-md-inline">Editer</span>
-        </Button>
-      </Col>
-    </Row>
+    <div
+      style={{
+        paddingLeft: '16vw',
+        paddingTop: '1%',
+        fontFamily: 'Mulish',
+        fontWeight: 900,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <Row>
+        <Col md="8">
+          <h2 data-cy="hospitalDetailsHeading" style={{ marginBottom: '12px', fontWeight: 800 }}>
+            Hôpital
+          </h2>
+          <dl className="jh-entity-details">
+            <dt>
+              <span id="id">ID</span>
+            </dt>
+            <dd>{hospitalEntity.id}</dd>
+            <dt>
+              <span id="name">Nom</span>
+            </dt>
+            <dd>{hospitalEntity.name}</dd>
+            <dt>
+              <span id="adress">Adresse</span>
+            </dt>
+            <dd>{hospitalEntity.adress}</dd>
+            <dt>
+              <span id="phone">Téléphone</span>
+            </dt>
+            <dd>{hospitalEntity.phone}</dd>
+            <dt>
+              <span id="logo">Logo</span>
+            </dt>
+            <dd>
+              {hospitalEntity.logo ? (
+                <div>
+                  {hospitalEntity.logoContentType ? (
+                    <a onClick={openFile(hospitalEntity.logoContentType, hospitalEntity.logo)}>
+                      <img src={`data:${hospitalEntity.logoContentType};base64,${hospitalEntity.logo}`} style={{ maxHeight: '60px' }} />
+                    </a>
+                  ) : null}
+                  <div style={{ fontSize: '12px', color: '#6c757d' }}>
+                    {hospitalEntity.logoContentType}, {byteSize(hospitalEntity.logo)}
+                  </div>
+                </div>
+              ) : (
+                <span className="text-muted">Aucun logo</span>
+              )}
+            </dd>
+          </dl>
+          <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+            <Button tag={Link} to="/hospital" replace color="info" data-cy="entityDetailsBackButton">
+              <FontAwesomeIcon icon="arrow-left" /> <span className="d-none d-md-inline">Retour</span>
+            </Button>
+            <Button tag={Link} to={`/hospital/${hospitalEntity.id}/edit`} replace color="primary">
+              <FontAwesomeIcon icon="pencil-alt" /> <span className="d-none d-md-inline">Éditer</span>
+            </Button>
+          </div>
+        </Col>
+      </Row>
+    </div>
   );
 };
 

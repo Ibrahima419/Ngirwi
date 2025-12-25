@@ -158,6 +158,34 @@ public class ExceptionTranslator implements ProblemHandling, SecurityAdviceTrait
         );
     }
 
+    /**
+     * Uniform BAD_REQUEST for domain validation errors thrown from services.
+     */
+    @ExceptionHandler
+    public ResponseEntity<Problem> handleIllegalArgumentException(IllegalArgumentException ex, NativeWebRequest request) {
+        Problem problem = Problem
+            .builder()
+            .withStatus(Status.BAD_REQUEST)
+            .with(MESSAGE_KEY, ErrorConstants.ERR_VALIDATION)
+            .withDetail(ex.getMessage())
+            .build();
+        return create(ex, problem, request);
+    }
+
+    /**
+     * Uniform BAD_REQUEST for domain state errors thrown from services.
+     */
+    @ExceptionHandler
+    public ResponseEntity<Problem> handleIllegalStateException(IllegalStateException ex, NativeWebRequest request) {
+        Problem problem = Problem
+            .builder()
+            .withStatus(Status.BAD_REQUEST)
+            .with(MESSAGE_KEY, ErrorConstants.ERR_VALIDATION)
+            .withDetail(ex.getMessage())
+            .build();
+        return create(ex, problem, request);
+    }
+
     @ExceptionHandler
     public ResponseEntity<Problem> handleConcurrencyFailure(ConcurrencyFailureException ex, NativeWebRequest request) {
         Problem problem = Problem.builder().withStatus(Status.CONFLICT).with(MESSAGE_KEY, ErrorConstants.ERR_CONCURRENCY_FAILURE).build();

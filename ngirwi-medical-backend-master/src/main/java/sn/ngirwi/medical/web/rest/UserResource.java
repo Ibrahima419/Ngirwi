@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.util.StringUtils;
 import sn.ngirwi.medical.config.Constants;
 import sn.ngirwi.medical.domain.User;
 import sn.ngirwi.medical.repository.UserRepository;
@@ -110,7 +111,14 @@ public class UserResource {
     public ResponseEntity<User> createUser(@RequestBody AdminUserDTO userDTO) throws URISyntaxException {
         log.debug("REST request to save User : {}", userDTO);
 
-        if (userDTO.getLangKey().isEmpty()) {
+        // Enforce login=email for all non-bootstrap accounts
+        if (!StringUtils.hasText(userDTO.getEmail())) {
+            throw new BadRequestAlertException("Email is required", "userManagement", "emailempty");
+        }
+        userDTO.setEmail(userDTO.getEmail().trim().toLowerCase());
+        userDTO.setLogin(userDTO.getEmail());
+
+        if (userDTO.getLangKey() == null || userDTO.getLangKey().isEmpty()) {
             userDTO.setLangKey("fr");
         }
 
@@ -145,6 +153,21 @@ public class UserResource {
     @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
     public ResponseEntity<AdminUserDTO> updateUser(@Valid @RequestBody AdminUserDTO userDTO) {
         log.debug("REST request to update User : {}", userDTO);
+
+        // Enforce login=email for all accounts, except the bootstrap "admin" user.
+        boolean isBootstrapAdmin = userDTO.getId() != null &&
+            userRepository.findById(userDTO.getId()).map(u -> "admin".equalsIgnoreCase(u.getLogin())).orElse(false);
+
+        if (!isBootstrapAdmin) {
+            if (!StringUtils.hasText(userDTO.getEmail())) {
+                throw new BadRequestAlertException("Email is required", "userManagement", "emailempty");
+            }
+            userDTO.setEmail(userDTO.getEmail().trim().toLowerCase());
+            userDTO.setLogin(userDTO.getEmail());
+        } else {
+            userDTO.setLogin("admin");
+        }
+
         Optional<User> existingUser = userRepository.findOneByEmailIgnoreCase(userDTO.getEmail());
         if (existingUser.isPresent() && (!existingUser.get().getId().equals(userDTO.getId()))) {
             throw new EmailAlreadyUsedException();

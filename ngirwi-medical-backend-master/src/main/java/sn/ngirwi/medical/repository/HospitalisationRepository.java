@@ -1,6 +1,8 @@
 package sn.ngirwi.medical.repository;
 
 import java.time.Instant;
+import java.util.Collection;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
@@ -19,17 +21,23 @@ public interface HospitalisationRepository extends JpaRepository<Hospitalisation
 
     Page<Hospitalisation> findAllByPatient_Id(Long patientId, Pageable pageable);
 
+    Optional<Hospitalisation> findFirstByPatient_IdAndStatusInOrderByEntryDateDesc(Long patientId, Collection<HospitalisationStatus> statuses);
+
+    Optional<Hospitalisation> findFirstByPatient_IdOrderByEntryDateDesc(Long patientId);
+
     @Query(
         "select h from Hospitalisation h where (:patientId is null or h.patient.id = :patientId) " +
         "and (:status is null or h.status = :status) " +
         "and (:from is null or h.entryDate >= :from) " +
-        "and (:to is null or h.entryDate <= :to)"
+        "and (:to is null or h.entryDate <= :to) " +
+        "and (:hospitalId is null or h.patient.hospitalId = :hospitalId)"
     )
     Page<Hospitalisation> search(
         @Param("patientId") Long patientId,
         @Param("status") HospitalisationStatus status,
         @Param("from") Instant from,
         @Param("to") Instant to,
+        @Param("hospitalId") Long hospitalId,
         Pageable pageable
     );
 }

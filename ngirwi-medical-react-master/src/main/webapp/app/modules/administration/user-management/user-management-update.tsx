@@ -38,6 +38,10 @@ export const UserManagementUpdate = () => {
   };
 
   const saveUser = values => {
+    // Enforce login=email for all accounts (bootstrap admin stays "admin" in backend).
+    if (values?.email) {
+      values.login = values.email;
+    }
     if (isNew) {
       dispatch(createUser(values));
     } else {
@@ -62,29 +66,7 @@ export const UserManagementUpdate = () => {
           ) : (
             <ValidatedForm onSubmit={saveUser} defaultValues={{ ...user, hospitalId: user?.hospitalId ?? '' }}>
               {user.id ? <ValidatedField type="text" name="id" required readOnly label="ID" validate={{ required: true }} /> : null}
-              <ValidatedField
-                type="text"
-                name="login"
-                label="Login"
-                validate={{
-                  required: {
-                    value: true,
-                    message: "Votre nom d'utilisateur est obligatoire.",
-                  },
-                  pattern: {
-                    value: /^[a-zA-Z0-9!$&*+=?^_`{|}~.-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*$|^[_.@A-Za-z0-9-]+$/,
-                    message: "Votre nom d'utilisateur est invalide.",
-                  },
-                  minLength: {
-                    value: 1,
-                    message: "Votre nom d'utilisateur doit contenir plus d'un caractère.",
-                  },
-                  maxLength: {
-                    value: 50,
-                    message: "Votre nom d'utilisateur ne peut pas contenir plus de 50 caractères.",
-                  },
-                }}
-              />
+              {/* Login is derived from email (login=email). */}
               <ValidatedField
                 type="text"
                 name="firstName"

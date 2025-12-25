@@ -2,17 +2,24 @@ package sn.ngirwi.medical.service.dto;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 
 public class MiniConsultationDTO implements Serializable {
 
     private Long id;
 
+    @NotBlank
     private String summary;
 
+    @NotBlank
     private String diagnosis;
 
+    @DecimalMin(value = "0", inclusive = true)
     private BigDecimal price;
 
+    @NotNull
     private Long surveillanceSheetId;
 
     // Getters and setters

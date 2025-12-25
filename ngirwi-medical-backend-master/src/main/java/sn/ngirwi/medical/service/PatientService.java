@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sn.ngirwi.medical.domain.Patient;
@@ -19,6 +20,7 @@ import sn.ngirwi.medical.repository.PatientRepository;
 import sn.ngirwi.medical.repository.UserRepository;
 import sn.ngirwi.medical.service.dto.PatientDTO;
 import sn.ngirwi.medical.service.mapper.PatientMapper;
+import sn.ngirwi.medical.service.CurrentHospitalProvider;
 
 /**
  * Service Implementation for managing {@link Patient}.
@@ -35,17 +37,20 @@ public class PatientService {
 
     private final PatientMapper patientMapper;
     private final DossierMedicalRepository dossierMedicalRepository;
+    private final CurrentHospitalProvider currentHospitalProvider;
 
     public PatientService(
         PatientRepository patientRepository,
         UserRepository userRepository,
         PatientMapper patientMapper,
-        DossierMedicalRepository dossierMedicalRepository
+        DossierMedicalRepository dossierMedicalRepository,
+        CurrentHospitalProvider currentHospitalProvider
     ) {
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
         this.patientMapper = patientMapper;
         this.dossierMedicalRepository = dossierMedicalRepository;
+        this.currentHospitalProvider = currentHospitalProvider;
     }
 
     /**
@@ -71,6 +76,11 @@ public class PatientService {
      */
     public PatientDTO update(PatientDTO patientDTO) {
         log.debug("Request to update Patient : {}", patientDTO);
+        if (patientDTO.getId() != null) {
+            patientRepository
+                .findById(patientDTO.getId())
+                .ifPresent(existing -> assertSameHospital(existing.getHospitalId()));
+        }
         Patient patient = patientMapper.toEntity(patientDTO);
         patient = patientRepository.save(patient);
         return patientMapper.toDto(patient);
@@ -88,6 +98,7 @@ public class PatientService {
         return patientRepository
             .findById(patientDTO.getId())
             .map(existingPatient -> {
+                assertSameHospital(existingPatient.getHospitalId());
                 patientMapper.partialUpdate(existingPatient, patientDTO);
 
                 return existingPatient;
@@ -105,7 +116,11 @@ public class PatientService {
     @Transactional(readOnly = true)
     public Page<PatientDTO> findAll(Pageable pageable) {
         log.debug("Request to get all Patients");
-        return patientRepository.findAll(pageable).map(patientMapper::toDto);
+        return currentHospitalProvider
+            .getCurrentHospitalId()
+            .map(hid -> patientRepository.findByHospitalId(hid, pageable))
+            .orElseGet(() -> patientRepository.findAll(pageable))
+            .map(patientMapper::toDto);
     }
 
     @Transactional(readOnly = true)
@@ -145,7 +160,11 @@ public class PatientService {
     @Transactional(readOnly = true)
     public Optional<PatientDTO> findOne(Long id) {
         log.debug("Request to get Patient : {}", id);
-        return patientRepository.findById(id).map(patientMapper::toDto);
+        return currentHospitalProvider
+            .getCurrentHospitalId()
+            .map(hid -> patientRepository.findById(id).filter(p -> hid.equals(p.getHospitalId())))
+            .orElseGet(() -> patientRepository.findById(id))
+            .map(patientMapper::toDto);
     }
 
     /**
@@ -155,7 +174,18 @@ public class PatientService {
      */
     public void delete(Long id) {
         log.debug("Request to delete Patient : {}", id);
+        patientRepository.findById(id).ifPresent(existing -> assertSameHospital(existing.getHospitalId()));
         dossierMedicalRepository.deleteByPatient_Id(id);
         patientRepository.deleteById(id);
+    }
+
+    private void assertSameHospital(Long entityHospitalId) {
+        currentHospitalProvider
+            .getCurrentHospitalId()
+            .ifPresent(current -> {
+                if (entityHospitalId != null && !java.util.Objects.equals(entityHospitalId, current)) {
+                    throw new AccessDeniedException("Access denied: resource not in your hospital");
+                }
+            });
     }
 }

@@ -67,7 +67,14 @@ export const HospitalisationDetail = () => {
       dispatch(getHospitalisation(id));
       dispatch(getByHospitalisation({ hospitalisationId: Number(id) }));
     }
-  }, [id]);
+  }, [id, dispatch]);
+
+  // Refresh data when hospitalisation entity changes (e.g., after close)
+  useEffect(() => {
+    if (id && hospitalisationEntity?.id) {
+      dispatch(getByHospitalisation({ hospitalisationId: Number(id) }));
+    }
+  }, [hospitalisationEntity?.status, hospitalisationEntity?.totalAmount, hospitalisationEntity?.id, id, dispatch]);
 
   useEffect(() => {
     const pid = hospitalisationEntity?.patient?.id || hospitalisationEntity?.patientId;
@@ -179,25 +186,21 @@ export const HospitalisationDetail = () => {
         diagnosis: mcDiagnosis || '',
         price: Number(mcPrice),
       });
-      // Refresh totals
+      // Close modal and reset form
       setMcModalOpen(false);
       setMcSummary('');
       setMcDiagnosis('');
       setMcPrice('');
       setMcSheetId('');
-      // Trigger totals recompute
-      const list = Array.isArray(sheets) ? sheets : [];
-      const totals = await Promise.all(
-        list.map(async (s: any) => {
-          const sid = s.id;
-          if (!sid) return 0;
-          const { data } = await axios.get<any[]>(`api/mini-consultations/by-surveillance/${sid}`);
-          return (data || []).reduce((acc: number, mc: any) => acc + Number(mc.price || 0), 0);
-        })
-      );
-      setMcTotal(totals.reduce((a, b) => a + b, 0));
-    } catch (e) {
-      // swallow for now; could show toast
+      // Force refresh: reload sheets (which triggers mini-consultations reload via useEffect)
+      if (id) {
+        dispatch(getByHospitalisation({ hospitalisationId: Number(id) }));
+        // Also reload hospitalisation to get updated totalAmount if it was recalculated
+        dispatch(getHospitalisation(id));
+      }
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || "Erreur lors de l'enregistrement";
+      setMcPriceError(msg);
     }
   };
 
@@ -223,10 +226,17 @@ export const HospitalisationDetail = () => {
         },
       });
       setCloseModalOpen(false);
-      // Refresh entity
+      setCloseDate(new Date().toISOString().slice(0, 16));
+      setCloseDiagnosis('');
+      setCloseGenerateBill(false);
+      // Refresh everything: entity, sheets, and patient
       dispatch(getHospitalisation(id));
-    } catch (e) {
-      // could add a toast; keep silent for now
+      dispatch(getByHospitalisation({ hospitalisationId: Number(id) }));
+      const pid = hospitalisationEntity?.patient?.id || hospitalisationEntity?.patientId;
+      if (pid) dispatch(getPatient(pid));
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || "Erreur lors de la clôture";
+      setCloseDateError(msg);
     }
   };
 
@@ -474,8 +484,15 @@ export const HospitalisationDetail = () => {
             <CardHeader className="fw-bold">Coût total</CardHeader>
             <CardBody>
               <div className="display-6 fw-bold" style={{ color: '#ff6600' }}>
-                {formatFcfa(hospitalisationEntity?.totalAmount || 0)}
+                {hospitalisationEntity?.totalAmount !== null && hospitalisationEntity?.totalAmount !== undefined
+                  ? formatFcfa(hospitalisationEntity.totalAmount)
+                  : formatFcfa(stat.combined)}
               </div>
+              {hospitalisationEntity?.totalAmount === null || hospitalisationEntity?.totalAmount === undefined ? (
+                <small className="text-muted">Estimation (fiches + mini-consultations)</small>
+              ) : (
+                <small className="text-muted">Montant finalisé</small>
+              )}
             </CardBody>
           </Card>
 

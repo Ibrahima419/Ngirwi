@@ -14,4 +14,8 @@ import sn.ngirwi.medical.domain.Prescription;
 @Repository
 public interface PrescriptionRepository extends JpaRepository<Prescription, Long> {
     Page<Prescription> findByAuthorIn(Collection<String> authors, Pageable pageable);
+
+    Page<Prescription> findByConsultation_Patient_HospitalId(Long hospitalId, Pageable pageable);
+
+    java.util.Optional<Prescription> findByIdAndConsultation_Patient_HospitalId(Long id, Long hospitalId);
 }
