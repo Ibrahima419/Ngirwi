@@ -28,7 +28,8 @@ export const SurveillanceSheetDetail = () => {
           Fiche de surveillance #{surveillanceSheetEntity?.id}
         </h2>
         <div className="d-flex gap-2">
-          <Button tag={Link} to="/surveillance-sheet" replace color="info" data-cy="entityDetailsBackButton">
+          <Button tag={Link} to={`/hospitalisation/${hid}`} replace color="info" data-cy="entityDetailsBackButton">
+          
             <FontAwesomeIcon icon="arrow-left" /> <span className="d-none d-md-inline">Retour</span>
           </Button>
           <Button tag={Link} to={`/surveillance-sheet/${surveillanceSheetEntity.id}/edit`} replace color="primary">

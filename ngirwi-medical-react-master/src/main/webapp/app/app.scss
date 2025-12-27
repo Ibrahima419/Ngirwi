@@ -133,6 +133,12 @@ a {
   white-space: pre-wrap;
 }
 
+// html, body {
+//   height: 100%;
+//   overflow: hidden !important; /* empêche le scroll */
+// }
+
+
 // Padding Helpers
 @mixin pad($size, $side) {
   @if $size == '' {

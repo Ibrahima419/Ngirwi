@@ -17,19 +17,29 @@ const initialState: EntityState<IBill> = {
   updateSuccess: false,
 };
 
-const apiUrl = 'api/bills';
+const apiUrl = '/api/bills';
 
 // Actions
 
-export const getEntities = createAsyncThunk('bill/fetch_entity_list', async ({ page, size, sort }: IQueryParams) => {
-  const requestUrl = `${apiUrl}${sort ? `?page=${page}&size=${size}&sort=${sort}&` : '?'}cacheBuster=${new Date().getTime()}`;
+export const getEntities = createAsyncThunk(
+  'bill/fetch_entity_list', 
+  async ({ page, size, sort }: IQueryParams) => {
+  const requestUrl = `${apiUrl}${
+    sort ? `?page=${page}&size=${size}&sort=${sort}&` : '?'
+  }cacheBuster=${new Date().getTime()}`;
   return axios.get<IBill[]>(requestUrl);
 });
 
-export const getEntitiesBis = createAsyncThunk('bill/fetch_entity_list', async ({ id, page, size, sort }: IQueryParamsWithId) => {
-  const requestUrl = `${apiUrl}bis/${id}${sort ? `?page=${page}&size=${size}&sort=${sort}&` : '?'}cacheBuster=${new Date().getTime()}`;
-  return axios.get<IBill[]>(requestUrl);
-});
+export const getEntitiesBis = createAsyncThunk(
+  'bill/fetch_entity_list_bis',  // 👍 Nom unique
+  async ({ id, page, size, sort }: IQueryParamsWithId) => {
+    const requestUrl = `${apiUrl}bis/${id}${
+      sort ? `?page=${page}&size=${size}&sort=${sort}&` : '?'
+    }cacheBuster=${new Date().getTime()}`;
+    return axios.get<IBill[]>(requestUrl);
+  }
+);
+
 
 export const getEntity = createAsyncThunk(
   'bill/fetch_entity',
@@ -107,9 +117,8 @@ export const BillSlice = createEntitySlice({
         state.updateSuccess = true;
         state.entity = {};
       })
-      .addMatcher(isFulfilled(getEntities), (state, action) => {
+      .addMatcher(isFulfilled(getEntities, getEntitiesBis), (state, action) => {
         const { data, headers } = action.payload;
-
         return {
           ...state,
           loading: false,
@@ -123,7 +132,7 @@ export const BillSlice = createEntitySlice({
         state.updateSuccess = true;
         state.entity = action.payload.data;
       })
-      .addMatcher(isPending(getEntities, getEntity), state => {
+      .addMatcher(isPending(getEntities, getEntitiesBis, getEntity), state => {
         state.errorMessage = null;
         state.updateSuccess = false;
         state.loading = true;

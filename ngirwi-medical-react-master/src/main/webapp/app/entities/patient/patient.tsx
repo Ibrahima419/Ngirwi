@@ -26,7 +26,7 @@ export const Patient = () => {
   );
 
   const account = useAppSelector(state => state.authentication.account);
-  const patientList = useAppSelector(state => state.patient.entities);
+  const patientList = useAppSelector(state => state.patient.entities) || [];
   const loading = useAppSelector(state => state.patient.loading);
   const isDoctor = useAppSelector(state => hasAnyAuthority(state.authentication.account.authorities, [AUTHORITIES.DOCTOR]));
   // const hospital = useAppSelector(state => state.hospital.entity);
@@ -40,7 +40,7 @@ export const Patient = () => {
   const getAllEntities = () => {
     dispatch(
       getEntitiesBis({
-        id: account.hospitalId !== null && account.hospitalId !== undefined ? account.hospitalId : 0,
+        // id: account.hospitalId !== null && account.hospitalId !== undefined ? account.hospitalId : 0,
         page: paginationState.activePage - 1,
         size: paginationState.itemsPerPage,
         sort: `${paginationState.sort},${paginationState.order}`,
@@ -115,6 +115,8 @@ export const Patient = () => {
         filter = null;
     }
   }
+
+  const filteredPatients = filter !== null ? filter : patientList;
 
   const [query, setQuery] = useState('');
 
@@ -264,7 +266,7 @@ export const Patient = () => {
                 {/* <input type="text" id="search" name="search" placeholder="Barre de recherche" onChange={handleSearch} />  */}
               </div>
             </div>
-            {patientList && patientList.length > 0 ? (
+            {filteredPatients.length > 0 ?  (
               <Table responsive style={{ borderCollapse: 'separate', borderSpacing: '0 15px' }}>
                 <thead
                   style={{

@@ -37,6 +37,8 @@ export const HospitalisationUpdate = () => {
   const [showClosureModal, setShowClosureModal] = useState(false);
   const [finalDiagnosis, setFinalDiagnosis] = useState('');
   const [pendingValues, setPendingValues] = useState<any>(null);
+
+  
   // Controlled form states to guarantee submission captures typed values
   const [admissionReason, setAdmissionReason] = useState<string>('');
   const [entryDiagnosis, setEntryDiagnosis] = useState<string>('');
@@ -50,29 +52,30 @@ export const HospitalisationUpdate = () => {
     navigate('/hospitalisation' + location.search);
   };
 
-  useEffect(() => {
-    if (isNew) {
-      dispatch(reset());
-    } else {
-      dispatch(getEntity(id));
-    }
+useEffect(() => {
+  if (isNew) {
+    dispatch(reset());
+  } else {
+    dispatch(getEntity(id));
+  }
 
-    // Load all patients for the dropdown
-    dispatch(
-      getEntitiesBis({
-        id: account.hospitalId !== null && account.hospitalId !== undefined ? account.hospitalId : 0,
-        page: 0,
-        size: 9999,
-        sort: 'id,asc',
-      })
-    );
+  // ✅ Appel simple sans hospitalId
+  dispatch(
+    getEntitiesBis({
+      filter: 'dossiermedical-is-null',
+      page: 0,
+      size: 9999,
+      sort: 'id,asc',
+    })
+  );
 
-    // Preselect patient if idPatient is provided in route
-    if (idPatient) {
-      setSelectedPatientId(idPatient);
-      dispatch(getPatient(idPatient));
-    }
-  }, []);
+  // Si un idPatient est présent dans l’URL, on pré-sélectionne ce patient
+  if (idPatient) {
+    setSelectedPatientId(idPatient);
+    dispatch(getPatient(idPatient));
+  }
+}, []);
+
 
   // Update selected patient when editing existing hospitalisation
   useEffect(() => {

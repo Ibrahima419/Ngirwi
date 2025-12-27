@@ -149,9 +149,11 @@ export const Hospitalisation = () => {
         </div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '8px 24px 8px 0' }}>
+        {account?.authorities?.some(role => role === 'ROLE_ADMIN' || role === 'ROLE_DOCTOR') && (
         <Link to={idPatient ? `/hospitalisation/new/${idPatient}` : '/hospitalisation/new'} className="btn btn-primary">
           + Nouvelle hospitalisation
         </Link>
+      )}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {/* KPI Row */}
@@ -243,7 +245,14 @@ export const Hospitalisation = () => {
           ) : null}
 
           {hospitalisationList && hospitalisationList.length > 0 ? (
-            <Table responsive className="mb-0 w-100" style={{ tableLayout: 'fixed' }}>
+            <div
+              style={{
+                height: 'calc(75vh - 260px)', 
+                overflowY: 'auto',
+                overflowX: 'hidden',
+              }}
+            >
+              <Table responsive className="mb-0 w-100" style={{ tableLayout: 'fixed' }}>
               <colgroup>
                 <col style={{ width: '25%' }} />
                 <col style={{ width: '15%' }} />
@@ -354,6 +363,7 @@ export const Hospitalisation = () => {
                         >
                           <FontAwesomeIcon icon="eye" className="me-1" /> Voir
                         </Button>
+                        {account?.authorities?.some(role => role === 'ROLE_ADMIN' || role === 'ROLE_DOCTOR') && (
                         <Button
                           tag={Link}
                           to={`/hospitalisation/${h.id}/edit?page=${paginationState.activePage}&sort=${paginationState.sort},${paginationState.order}`}
@@ -364,12 +374,14 @@ export const Hospitalisation = () => {
                         >
                           <FontAwesomeIcon icon="pencil-alt" className="me-1" /> Éditer
                         </Button>
+                      )}
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </Table>
+            </div>
           ) : (
             !loading && <div className="alert alert-warning">Aucune Hospitalisation trouvée</div>
           )}

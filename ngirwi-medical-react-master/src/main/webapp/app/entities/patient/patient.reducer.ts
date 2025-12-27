@@ -19,15 +19,25 @@ const apiUrl = 'api/patients';
 
 // Actions
 
-export const getEntities = createAsyncThunk('patient/fetch_entity_list', async ({ page, size, sort }: IQueryParams) => {
-  const requestUrl = `${apiUrl}${sort ? `?page=${page}&size=${size}&sort=${sort}&` : '?'}cacheBuster=${new Date().getTime()}`;
-  return axios.get<IPatient[]>(requestUrl);
-});
+export const getEntities = createAsyncThunk(
+  'patient/fetch_entity_list', async ({ 
+    page, size, sort }: IQueryParams) => {
+      const requestUrl = `${apiUrl}${sort ? `?page=${page}&size=${size}&sort=${sort}&` : '?'}cacheBuster=${new Date().getTime()}`;
+      return axios.get<IPatient[]>(requestUrl);
+    }
+);
 
-export const getEntitiesBis = createAsyncThunk('patient/fetch_entity_list', async ({ id, page, size, sort }: IQueryParamsWithId) => {
-  const requestUrl = `${apiUrl}bis/${id}${sort ? `?page=${page}&size=${size}&sort=${sort}&` : '?'}cacheBuster=${new Date().getTime()}`;
-  return axios.get<IPatient[]>(requestUrl);
-});
+export const getEntitiesBis = createAsyncThunk(
+  'patient/fetch_entity_list_bis',
+  async ({ page = 0, size = 20, sort = 'id,asc', filter }: any) => {
+    let requestUrl = `${apiUrl}?page=${page}&size=${size}&sort=${sort}`;
+    if (filter) {
+      requestUrl += `&filter=${filter}`;
+    }
+    return axios.get<IPatient[]>(requestUrl);
+  }
+);
+
 
 export const getEntity = createAsyncThunk(
   'patient/fetch_entity',
@@ -104,6 +114,10 @@ export const PatientSlice = createEntitySlice({
           entities: data,
           totalItems: parseInt(headers['x-total-count'], 10),
         };
+      })
+      .addMatcher(isFulfilled(getEntitiesBis), (state, action) => {
+        state.loading = false;
+        state.entities = action.payload.data;
       })
       .addMatcher(isFulfilled(createEntity, updateEntity, partialUpdateEntity), (state, action) => {
         state.updating = false;

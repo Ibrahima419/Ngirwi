@@ -138,6 +138,17 @@ export const HospitalisationDetail = () => {
     };
   }, [JSON.stringify(sheets.map((s: any) => s.id)), hospitalisationEntity?.id]);
 
+
+  // useEffect(() => {
+  //   document.body.style.overflow = 'hidden';
+  //   document.documentElement.style.overflow = 'hidden';
+
+  //   return () => {
+  //     document.body.style.overflow = 'auto';
+  //     document.documentElement.style.overflow = 'auto';
+  //   };
+  // }, []);
+
   const stat = useMemo(() => {
     const list = Array.isArray(sheets) ? sheets : [];
     const meds = list.reduce((acc: number, s: any) => acc + ((s.medications || []).length || 0), 0);
@@ -230,6 +241,11 @@ export const HospitalisationDetail = () => {
     }
   };
 
+  const authorities = useAppSelector(state => state.authentication.account.authorities || []);
+  const isAdminOrDoctor =
+  authorities.includes('ROLE_ADMIN') || authorities.includes('ROLE_DOCTOR');
+
+
   const handleExportPdf = async () => {
     if (!id) return;
     try {
@@ -275,9 +291,11 @@ export const HospitalisationDetail = () => {
           </div>
         </div>
         <div className="d-flex gap-2">
-          <Button color="danger" className="px-3" onClick={toggleCloseModal} disabled={isClosed}>
-            <FontAwesomeIcon icon="check" className="me-1" /> Clôturer
-          </Button>
+          {isAdminOrDoctor && (
+            <Button color="danger" className="px-3" onClick={toggleCloseModal} disabled={isClosed}>
+              <FontAwesomeIcon icon="check" className="me-1" /> Clôturer
+            </Button>
+          )}
         </div>
       </div>
 
@@ -361,13 +379,15 @@ export const HospitalisationDetail = () => {
 
           <div className="d-flex align-items-center justify-content-between mb-2">
             <h5 className="mb-0">Fiches de surveillance</h5>
-            <Button
-              color="success"
-              onClick={() => navigate(`/surveillance-sheet/new?hospitalisationId=${hospitalisationEntity?.id}`)}
-              disabled={isClosed}
-            >
-              <FontAwesomeIcon icon="plus" /> &nbsp; Ajouter une fiche
-            </Button>
+            {isAdminOrDoctor && (
+              <Button
+                color="success"
+                onClick={() => navigate(`/surveillance-sheet/new?hospitalisationId=${hospitalisationEntity?.id}`)}
+                disabled={isClosed}
+              >
+                <FontAwesomeIcon icon="plus" /> &nbsp; Ajouter une fiche
+              </Button>
+            )}
           </div>
           <div className="d-flex flex-column gap-2">
             {(Array.isArray(sheets) ? sheets : []).map((s: any) => (
@@ -397,9 +417,11 @@ export const HospitalisationDetail = () => {
                         })()
                       )}
                     </div>
+                    {isAdminOrDoctor && (
                     <Button color="secondary" outline onClick={() => navigate(`/surveillance-sheet/${s.id}`)}>
                       Voir
                     </Button>
+                    )}
                   </div>
                 </CardBody>
               </Card>
@@ -410,14 +432,16 @@ export const HospitalisationDetail = () => {
           {/* Mini-consultations section */}
           <div className="d-flex align-items-center justify-content-between mt-4 mb-2">
             <h5 className="mb-0">Mini-consultations</h5>
-            <Button
-              color="primary"
-              outline
-              onClick={toggleMcModal}
-              disabled={isClosed || !Array.isArray(sheets) || (sheets as any[]).length === 0}
-            >
-              <FontAwesomeIcon icon="plus" /> &nbsp; Ajouter une mini-consultation
-            </Button>
+            {isAdminOrDoctor && (
+              <Button
+                color="primary"
+                outline
+                onClick={toggleMcModal}
+                disabled={isClosed || !Array.isArray(sheets) || (sheets as any[]).length === 0}
+              >
+                <FontAwesomeIcon icon="plus" /> &nbsp; Ajouter une mini-consultation
+              </Button>
+            )}
           </div>
           <div className="d-flex flex-column gap-2">
             {miniLoading && <div className="text-muted small">Chargement…</div>}
@@ -446,7 +470,7 @@ export const HospitalisationDetail = () => {
                         <div className="fw-bold me-2" style={{ color: '#ff6600' }}>
                           {formatFcfa(Number(m.price || 0))}
                         </div>
-                        {m._sheetId && (
+                        {m._sheetId && isAdminOrDoctor && (
                           <Button
                             size="sm"
                             outline
@@ -509,15 +533,21 @@ export const HospitalisationDetail = () => {
           <Card className="mb-3 shadow-sm">
             <CardHeader className="fw-bold">Actions</CardHeader>
             <CardBody className="d-flex flex-column gap-2">
-              <Button color="primary" outline onClick={() => navigate(`/hospitalisation/${hospitalisationEntity?.id}/edit`)}>
-                <FontAwesomeIcon icon="pencil-alt" className="me-2" /> Modifier les informations
-              </Button>
+              {isAdminOrDoctor && (
+                <Button color="primary" outline onClick={() => navigate(`/hospitalisation/${hospitalisationEntity?.id}/edit`)}>
+                  <FontAwesomeIcon icon="pencil-alt" className="me-2" /> Modifier les informations
+                </Button>
+              )}
+              {isAdminOrDoctor && (
               <Button color="secondary" outline onClick={() => window.print()}>
                 <FontAwesomeIcon icon="print" className="me-2" /> Imprimer le dossier
               </Button>
+              )}
+              {isAdminOrDoctor && (
               <Button color="secondary" outline disabled={!isClosed} onClick={handleExportPdf}>
                 <FontAwesomeIcon icon="file-pdf" className="me-2" /> Exporter PDF
               </Button>
+              )}
             </CardBody>
           </Card>
         </Col>
