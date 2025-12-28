@@ -15,11 +15,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import sn.ngirwi.medical.domain.enumeration.HospitalisationStatus;
 import sn.ngirwi.medical.repository.HospitalisationRepository;
+import sn.ngirwi.medical.security.Permissions;
+import sn.ngirwi.medical.service.AuthorizationService;
 import sn.ngirwi.medical.service.HospitalisationService;
 import sn.ngirwi.medical.service.dto.HospitalisationDTO;
 import sn.ngirwi.medical.service.dto.HospitalisationResumeDTO;
@@ -33,7 +39,7 @@ import tech.jhipster.web.util.ResponseUtil;
  */
 @RestController
 @RequestMapping("/api")
-public class HospitalisationResource {
+public class    HospitalisationResource {
 
     private final Logger log = LoggerFactory.getLogger(HospitalisationResource.class);
 
@@ -44,17 +50,54 @@ public class HospitalisationResource {
 
     private final HospitalisationService hospitalisationService;
     private final HospitalisationRepository hospitalisationRepository;
+    private final AuthorizationService authorizationService;
 
-    public HospitalisationResource(HospitalisationService hospitalisationService, HospitalisationRepository hospitalisationRepository) {
+
+    public HospitalisationResource(HospitalisationService hospitalisationService,
+                                   HospitalisationRepository hospitalisationRepository,
+                                   AuthorizationService authorizationService, AuthorizationService authorizationService1) {
         this.hospitalisationService = hospitalisationService;
         this.hospitalisationRepository = hospitalisationRepository;
+        this.authorizationService = authorizationService1;
     }
+
+
+    // --------------------------
+    // Méthode privée pour vérifier la permission
+    // --------------------------
+    private void checkPermission(Authentication auth, String permission) {
+        if (!authorizationService.hasPermission(auth, permission)) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Access Denied");
+        }
+    }
+
+    //-----------------------------------
+    //Méthodes spécifiques pour chaque type d’action
+    //-----------------------------------
+    private void checkRead(Authentication auth) {
+        checkPermission(auth, Permissions.HOSPITALISATION_READ);
+    }
+
+    private void checkCreate(Authentication auth) {
+        checkPermission(auth, Permissions.HOSPITALISATION_CREATE);
+    }
+
+    private void checkUpdate(Authentication auth) {
+        checkPermission(auth, Permissions.HOSPITALISATION_UPDATE);
+    }
+
+    private void checkDelete(Authentication auth) {
+        checkPermission(auth, Permissions.HOSPITALISATION_DELETE);
+    }
+
 
     /**
      * POST  /hospitalisations : Create a new Hospitalisation.
      */
     @PostMapping("/hospitalisations")
-    public ResponseEntity<HospitalisationDTO> createHospitalisation(@Valid @RequestBody HospitalisationDTO dto) throws URISyntaxException {
+    public ResponseEntity<HospitalisationDTO> createHospitalisation(@Valid @RequestBody HospitalisationDTO dto,
+                                                                    Authentication auth) throws URISyntaxException {
+        checkCreate(auth);
         log.debug("REST request to create Hospitalisation for patientId={}", dto.getPatientId());
         if (dto.getId() != null) {
             throw new BadRequestAlertException("A new hospitalisation cannot already have an ID", ENTITY_NAME, "idexists");
@@ -77,8 +120,10 @@ public class HospitalisationResource {
     @PutMapping("/hospitalisations/{id}")
     public ResponseEntity<HospitalisationDTO> updateHospitalisation(
         @PathVariable(value = "id", required = false) final Long id,
-        @Valid @RequestBody HospitalisationDTO dto
+        @Valid @RequestBody HospitalisationDTO dto,
+        Authentication auth
     ) {
+        checkUpdate(auth);
         log.debug("REST request to update Hospitalisation : id={}, patientId={}", id, dto.getPatientId());
         if (dto.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
@@ -107,8 +152,10 @@ public class HospitalisationResource {
     @PatchMapping(value = "/hospitalisations/{id}", consumes = { "application/json", "application/merge-patch+json" })
     public ResponseEntity<HospitalisationDTO> partialUpdateHospitalisation(
         @PathVariable(value = "id", required = false) final Long id,
-        @RequestBody HospitalisationDTO dto
+        @RequestBody HospitalisationDTO dto,
+        Authentication auth
     ) {
+        checkUpdate(auth);
         log.debug("REST request to partial update Hospitalisation : id={}, dto={}", id, dto);
         if (dto.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
@@ -136,8 +183,10 @@ public class HospitalisationResource {
      */
     @GetMapping("/hospitalisations")
     public ResponseEntity<List<HospitalisationDTO>> getAllHospitalisations(
+        Authentication auth,
         @org.springdoc.api.annotations.ParameterObject Pageable pageable
     ) {
+        checkRead(auth);
         log.debug("REST request to get a page of Hospitalisations");
         Page<HospitalisationDTO> page = hospitalisationService.findAll(pageable);
         HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
@@ -148,7 +197,9 @@ public class HospitalisationResource {
      * GET  /hospitalisations/{id} : get the "id" hospitalisation.
      */
     @GetMapping("/hospitalisations/{id}")
-    public ResponseEntity<HospitalisationDTO> getHospitalisation(@PathVariable Long id) {
+    public ResponseEntity<HospitalisationDTO> getHospitalisation(@PathVariable Long id,
+                                                                 Authentication auth) {
+        checkRead(auth);
         log.debug("REST request to get Hospitalisation : {}", id);
         Optional<HospitalisationDTO> dto = hospitalisationService.findOne(id);
         return ResponseUtil.wrapOrNotFound(dto);
@@ -158,7 +209,9 @@ public class HospitalisationResource {
      * DELETE  /hospitalisations/{id} : delete the "id" hospitalisation.
      */
     @DeleteMapping("/hospitalisations/{id}")
-    public ResponseEntity<Void> deleteHospitalisation(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteHospitalisation(@PathVariable Long id,
+                                                      Authentication auth) {
+        checkDelete(auth);
         log.debug("REST request to delete Hospitalisation : {}", id);
         if (!hospitalisationRepository.existsById(id)) {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
@@ -178,8 +231,10 @@ public class HospitalisationResource {
         @PathVariable Long id,
         @RequestParam Instant releaseDate,
         @RequestParam(required = false) String finalDiagnosis,
-        @RequestParam(defaultValue = "false") boolean generateBill
+        @RequestParam(defaultValue = "false") boolean generateBill,
+        Authentication auth
     ) {
+        checkCreate(auth);
         log.debug("REST request to close Hospitalisation id={}, releaseDate={}, generateBill={}", id, releaseDate, generateBill);
         if (!hospitalisationRepository.existsById(id)) {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
@@ -209,8 +264,10 @@ public class HospitalisationResource {
         @PathVariable Long patientId,
         @RequestParam(required = false) String service,
         @RequestParam(required = false) HospitalisationStatus status,
-        @org.springdoc.api.annotations.ParameterObject Pageable pageable
+        @org.springdoc.api.annotations.ParameterObject Pageable pageable,
+        Authentication auth
     ) {
+        checkRead(auth);
         log.debug("REST request to get Hospitalisations by patientId={}, service={}, status={}", patientId, service, status);
         Page<HospitalisationDTO> page = hospitalisationService.findByPatient(
             patientId,
@@ -228,8 +285,10 @@ public class HospitalisationResource {
     @GetMapping("/hospitalisations/active")
     public ResponseEntity<List<HospitalisationDTO>> getActive(
         @RequestParam(required = false) String service,
-        @org.springdoc.api.annotations.ParameterObject Pageable pageable
+        @org.springdoc.api.annotations.ParameterObject Pageable pageable,
+        Authentication auth
     ) {
+        checkRead(auth);
         log.debug("REST request to get active Hospitalisations service={}", service);
         Page<HospitalisationDTO> page = hospitalisationService.findActive(service, pageable);
         HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
@@ -246,8 +305,10 @@ public class HospitalisationResource {
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
         @RequestParam(required = false) String service,
-        @org.springdoc.api.annotations.ParameterObject Pageable pageable
+        @org.springdoc.api.annotations.ParameterObject Pageable pageable,
+        Authentication auth
     ) {
+        checkRead(auth);
         log.debug(
             "REST request to search Hospitalisations patientId={}, status={}, from={}, to={}, service={}",
             patientId,
@@ -272,7 +333,9 @@ public class HospitalisationResource {
      * GET /hospitalisations/{id}/resume : calcule et retourne le résumé de facturation SANS persister.
      */
     @GetMapping("/hospitalisations/{id}/resume")
-    public ResponseEntity<HospitalisationResumeDTO> getHospitalisationResume(@PathVariable Long id) {
+    public ResponseEntity<HospitalisationResumeDTO> getHospitalisationResume(@PathVariable Long id,
+                                                                             Authentication auth) {
+        checkRead(auth);
         log.debug("REST request to get billing resume for Hospitalisation : {}", id);
         HospitalisationResumeDTO dto = hospitalisationService.calculateResume(id);
         return ResponseEntity.ok(dto);
@@ -282,9 +345,25 @@ public class HospitalisationResource {
      * POST /hospitalisations/{id}/finalize : calcule et PERSISTE le totalAmount (fin d'hospitalisation).
      */
     @PostMapping("/hospitalisations/{id}/finalize")
-    public ResponseEntity<HospitalisationResumeDTO> finalizeHospitalisationBilling(@PathVariable Long id) {
+    public ResponseEntity<HospitalisationResumeDTO> finalizeHospitalisationBilling(@PathVariable Long id,
+                                                                                   Authentication auth) {
+        checkCreate(auth);
         log.debug("REST request to finalize billing for Hospitalisation : {}", id);
         HospitalisationResumeDTO dto = hospitalisationService.finalizeBilling(id);
         return ResponseEntity.ok(dto);
+    }
+
+    @GetMapping(value = "/hospitalisations/{id}/resume.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> exportHospitalisationPdf(@PathVariable Long id) {
+        byte[] pdfBytes = hospitalisationService.generateHospitalisationPdf(id);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "attachment; filename=hospitalisation_" + id + ".pdf");
+
+
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=hospitalisation-" + id + ".pdf")
+            .contentType(MediaType.APPLICATION_PDF)
+            .body(pdfBytes);
     }
 }

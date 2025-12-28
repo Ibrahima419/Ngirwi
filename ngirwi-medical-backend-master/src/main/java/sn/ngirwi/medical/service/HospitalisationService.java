@@ -21,11 +21,17 @@ import sn.ngirwi.medical.service.dto.HospitalisationDTO;
 import sn.ngirwi.medical.service.dto.HospitalisationResumeDTO;
 import sn.ngirwi.medical.service.mapper.HospitalisationMapper;
 
+
+import org.springframework.stereotype.Service;
+import sn.ngirwi.medical.repository.HospitalisationRepository;
+import sn.ngirwi.medical.utils.HeaderUtil;
+
 @Service
 @Transactional
 public class HospitalisationService {
 
     private final Logger log = LoggerFactory.getLogger(HospitalisationService.class);
+
 
     private final HospitalisationRepository hospitalisationRepository;
     private final SurveillanceSheetRepository surveillanceSheetRepository;
@@ -355,17 +361,21 @@ public class HospitalisationService {
         }
 
         existing.setReleaseDate(releaseDate);
-        if (finalDiagnosis != null) existing.setFinalDiagnosis(finalDiagnosis);
+        existing.setFinalDiagnosis(finalDiagnosis);
         existing.setStatus(HospitalisationStatus.DONE);
 
-        Hospitalisation saved = hospitalisationRepository.save(existing);
+        hospitalisationRepository.save(existing);
+
+        // 🔥 Ajouter cette ligne : elle enregistre réellement totalAmount dans la DB
+        finalizeBilling(id);
 
         if (generateBill) {
-            createBillForHospitalisation(saved);
+            createBillForHospitalisation(existing);
         }
 
-        return hospitalisationMapper.toDto(saved);
+        return hospitalisationMapper.toDto(existing);
     }
+
 
     // -------------------------
     // Delete
@@ -532,4 +542,14 @@ public class HospitalisationService {
     private static BigDecimal nvl(BigDecimal v) {
         return v == null ? BigDecimal.ZERO : v;
     }
+
+
+
+    public byte[] generateHospitalisationPdf(Long id) {
+        Hospitalisation hospitalisation = hospitalisationRepository.findByIdWithSheets(id)
+            .orElseThrow(() -> new RuntimeException("Hospitalisation introuvable !"));
+
+        return PdfGenerator.generate(hospitalisation);
+    }
+
 }

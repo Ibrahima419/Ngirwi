@@ -36,21 +36,22 @@ public class UserService {
     private final UserRepository userRepository;
 
     private final PasswordEncoder passwordEncoder;
-
     private final AuthorityRepository authorityRepository;
-
     private final CacheManager cacheManager;
+    private final MailService mailService;
 
     public UserService(
         UserRepository userRepository,
         PasswordEncoder passwordEncoder,
         AuthorityRepository authorityRepository,
-        CacheManager cacheManager
+        CacheManager cacheManager,
+        MailService mailService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authorityRepository = authorityRepository;
         this.cacheManager = cacheManager;
+        this.mailService = mailService;
     }
 
     public Optional<User> activateRegistration(String key) {
@@ -147,6 +148,7 @@ public class UserService {
         return true;
     }
 
+    /**
     public User createUser(AdminUserDTO userDTO) {
         User user = new User();
         user.setLogin(userDTO.getLogin().toLowerCase());
@@ -180,6 +182,53 @@ public class UserService {
         userRepository.save(user);
         this.clearUserCaches(user);
         log.debug("Created Information for User: {}", user);
+        return user;
+    }
+     */
+
+    public User createUser(AdminUserDTO userDTO) {
+        User user = new User();
+        user.setLogin(userDTO.getLogin().toLowerCase());
+        user.setFirstName(userDTO.getFirstName());
+        user.setLastName(userDTO.getLastName());
+        if (userDTO.getEmail() != null) {
+            user.setEmail(userDTO.getEmail().toLowerCase());
+        }
+        user.setImageUrl(userDTO.getImageUrl());
+        user.setLangKey(userDTO.getLangKey() == null ? Constants.DEFAULT_LANGUAGE : userDTO.getLangKey());
+
+        // 1️⃣ Générer mot de passe brut
+        String rawPassword = RandomUtil.generatePassword();
+
+        // 2️⃣ Encoder le mot de passe
+        String encryptedPassword = passwordEncoder.encode(rawPassword);
+        user.setPassword(encryptedPassword);
+
+        // 3️⃣ Générer reset key
+        user.setResetKey(RandomUtil.generateResetKey());
+        user.setResetDate(Instant.now());
+        user.setActivated(true);
+        user.setHospitalId(userDTO.getHospitalId());
+
+        // 4️⃣ Définir les rôles
+        if (userDTO.getAuthorities() != null) {
+            Set<Authority> authorities = userDTO
+                .getAuthorities()
+                .stream()
+                .map(authorityRepository::findById)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toSet());
+            user.setAuthorities(authorities);
+        }
+
+        userRepository.save(user);
+        this.clearUserCaches(user);
+        log.debug("Created Information for User: {}", user);
+
+        // 5️⃣ Envoyer un email contenant login + mot de passe
+        mailService.sendCreationEmail(user, rawPassword);
+
         return user;
     }
 

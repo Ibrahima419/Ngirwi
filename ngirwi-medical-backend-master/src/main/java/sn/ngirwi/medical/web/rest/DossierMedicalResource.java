@@ -33,7 +33,6 @@ import tech.jhipster.web.util.ResponseUtil;
  */
 @RestController
 @RequestMapping("/api")
-@PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.DOCTOR + "\")")
 public class DossierMedicalResource {
 
     private final Logger log = LoggerFactory.getLogger(DossierMedicalResource.class);

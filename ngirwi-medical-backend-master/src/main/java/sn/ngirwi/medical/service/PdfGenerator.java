@@ -1,151 +1,230 @@
 package sn.ngirwi.medical.service;
 
-
+import java.awt.*;
 import java.io.ByteArrayOutputStream;
-import java.time.Instant;
+import java.io.InputStream;
 import java.time.format.DateTimeFormatter;
 
-
-import com.lowagie.text.pdf.PdfPCell;
-import com.lowagie.text.pdf.PdfWriter;
-import sn.ngirwi.medical.domain.Hospitalisation;
-import com.lowagie.text.Document;
-import com.lowagie.text.Element;
+import com.lowagie.text.*;
 import com.lowagie.text.Font;
-import com.lowagie.text.PageSize;
-import com.lowagie.text.Paragraph;
-import com.lowagie.text.Phrase;
-import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.Image;
+import com.lowagie.text.pdf.*;
+import com.lowagie.text.pdf.draw.LineSeparator;
+import sn.ngirwi.medical.domain.Hospitalisation;
 
+import static sn.ngirwi.medical.utils.PdfGenerator.safe;
 
 public class PdfGenerator {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
+
+
     public static byte[] generate(Hospitalisation h) {
+
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
 
-            Document document = new Document(PageSize.A4, 40, 40, 60, 50);
-            PdfWriter.getInstance(document, baos);
+            Document document = new Document(PageSize.A4, 25, 25, 20, 20);
+            PdfWriter writer = PdfWriter.getInstance(document, baos);
             document.open();
 
-            // ---------- Styles ----------
-            Font titleFont = new Font(Font.HELVETICA, 20, Font.BOLD);
-            Font headerFont = new Font(Font.HELVETICA, 14, Font.BOLD);
-            Font labelFont = new Font(Font.HELVETICA, 11, Font.BOLD);
-            Font valueFont = new Font(Font.HELVETICA, 11);
+            /* ================= WATERMARK ================= */
+            InputStream is = PdfGenerator.class
+                .getResourceAsStream("/static/images/NgirwiLogo.png");
 
-            // ---------- ENTÊTE ----------
-            Paragraph title = new Paragraph("CLINIQUE NGIRWI - FICHE D'HOSPITALISATION", titleFont);
+            Image watermark = Image.getInstance(is.readAllBytes());
+            watermark.scaleAbsolute(PageSize.A4.getWidth(), PageSize.A4.getHeight());
+            watermark.setAbsolutePosition(0, 0);
+
+            PdfContentByte under = writer.getDirectContentUnder();
+            PdfGState gs = new PdfGState();
+            gs.setFillOpacity(0.8f);
+            under.saveState();
+            under.setGState(gs);
+            under.addImage(watermark);
+            under.restoreState();
+
+            /* ================= FONTS ================= */
+            Font header = new Font(Font.HELVETICA, 12, Font.BOLD);
+            Font section = new Font(Font.HELVETICA, 10, Font.BOLD);
+            Font normal = new Font(Font.HELVETICA, 9);
+
+            /* ================= HEADER ================= */
+            Paragraph headerInfo = new Paragraph(
+                "Tel : 777777777\nAdresse : Medina Gounass/Guediawaye\n\n",
+                normal
+            );
+            headerInfo.setAlignment(Element.ALIGN_CENTER);
+
+
+
+
+            /* ================= LOGO HOPITAL (EN HAUT) ================= */
+
+
+            InputStream logoStream = PdfGenerator.class
+                .getResourceAsStream("/static/images/logo.jpg");
+
+            if (logoStream == null) {
+                throw new RuntimeException("Logo hôpital introuvable");
+            }
+
+            Image logoTop = Image.getInstance(logoStream.readAllBytes());
+
+            // Taille du logo (ajustable au millimètre)
+            logoTop.scaleAbsolute(150, 70);
+
+            // Position : centré en haut
+            logoTop.setAlignment(Image.ALIGN_CENTER);
+
+            // Espacement bas (pour ne pas coller le texte)
+            logoTop.setSpacingAfter(10f);
+
+            document.add(logoTop);
+
+            document.add(headerInfo);
+
+            LineSeparator ls = new LineSeparator();
+            document.add(ls);
+
+            Paragraph title = new Paragraph(
+                "\nDOCUMENT DE SORTIE D’HOSPITALISATION\n\n",
+                header
+            );
             title.setAlignment(Element.ALIGN_CENTER);
             document.add(title);
 
-            Paragraph sub = new Paragraph("Document médical confidentiel", valueFont);
-            sub.setAlignment(Element.ALIGN_CENTER);
-            document.add(sub);
+            /* ================= PATIENT INFO ================= */
+            document.add(new Paragraph("INFORMATIONS DU PATIENT :", section));
 
-            document.add(new Paragraph("\n"));
+            PdfPTable patient = new PdfPTable(2);
+            patient.setWidthPercentage(100);
+            patient.setSpacingBefore(5);
+            patient.setSpacingAfter(10);
+            patient.setWidths(new float[]{30, 70});
 
-            // ---------- INFOS PATIENT ----------
-            document.add(new Paragraph("📋 Informations du Patient", headerFont));
-            document.add(new Paragraph("\n"));
+            cell(patient, "Nom :", h.getPatient().getLastName(), normal);
+            cell(patient, "Prénom :", h.getPatient().getFirstName(), normal);
+            cell(patient, "Date de naissance :", "-", normal);
+            cell(patient, "Adresse :", "-", normal);
 
-            PdfPTable patientTable = new PdfPTable(2);
-            patientTable.setWidthPercentage(100);
+            document.add(patient);
 
-            patientTable.addCell(cell("Nom & Prénom :", true));
-            patientTable.addCell(cell(h.getPatient().getLastName() + " " + h.getPatient().getFirstName(), false));
+            /* ================= HOSPITALISATION INFO ================= */
+            document.add(new Paragraph("INFORMATIONS DE L’HOSPITALISATION :", section));
 
-            patientTable.addCell(cell("Sexe :", true));
-            patientTable.addCell(cell(String.valueOf(h.getPatient().getGender()), false));
+            PdfPTable hosp = new PdfPTable(2);
+            hosp.setWidthPercentage(100);
+            hosp.setSpacingBefore(5);
+            hosp.setSpacingAfter(10);
+            hosp.setWidths(new float[]{35, 65});
 
-            patientTable.addCell(cell("Téléphone :", true));
-            patientTable.addCell(cell(h.getPatient().getPhone(), false));
+            cell(hosp, "Jour d’admission :", String.valueOf(h.getEntryDate()), normal);
+            cell(hosp, "Motif :", safe(h.getAdmissionReason()), normal);
+            cell(hosp, "Médecin Traitant :", h.getDoctorName(), normal);
+            cell(hosp, "Service :", "-", normal);
+            cell(hosp, "Diagnostic Final :", safe(h.getFinalDiagnosis()), normal);
 
-            patientTable.addCell(cell("Adresse :", true));
-            patientTable.addCell(cell(h.getPatient().getAdress(), false));
+            document.add(hosp);
 
-            patientTable.addCell(cell("Groupe sanguin :", true));
-            patientTable.addCell(cell(String.valueOf(h.getPatient().getBloodType()), false));
+            /* ================= MEDICAMENTS ================= */
+            document.add(new Paragraph("Medicaments Administrés", section));
 
-            patientTable.addCell(cell("Situation matrimoniale :", true));
-            patientTable.addCell(cell(String.valueOf(h.getPatient().getMaritialStatus()), false));
+            PdfPTable meds = new PdfPTable(4);
+            meds.setWidthPercentage(100);
+            meds.setSpacingBefore(5);
+            meds.setSpacingAfter(10);
 
-            document.add(patientTable);
-            document.add(new Paragraph("\n"));
+            th(meds, "Nom");
+            th(meds, "Quantité");
+            th(meds, "Prix");
+            th(meds, "Date");
 
-            // ---------- INFOS HOSPITALISATION ----------
-            document.add(new Paragraph("🏥 Details de l’Hospitalisation", headerFont));
-            document.add(new Paragraph("\n"));
+            h.getSurveillanceSheets().forEach(s ->
+                s.getMedications().forEach(m -> {
+                    td(meds, m.getNom());
+                    td(meds, String.valueOf(m.getQuantite()));
+                    td(meds, "1000");
+                    td(meds, s.getSheetDate().toString());
+                })
+            );
 
-            PdfPTable hospTable = new PdfPTable(2);
-            hospTable.setWidthPercentage(100);
+            document.add(meds);
 
-            hospTable.addCell(cell("ID Hospitalisation:", true));
-            hospTable.addCell(cell(String.valueOf(h.getId()), false));
+            /* ================= ACTES ================= */
+            document.add(new Paragraph("Actes Réalisés", section));
 
-            hospTable.addCell(cell("Médecin responsable :", true));
-            hospTable.addCell(cell(h.getDoctorName(), false));
+            PdfPTable actes = new PdfPTable(4);
+            actes.setWidthPercentage(100);
 
-            hospTable.addCell(cell("Date d'entrée :", true));
-            hospTable.addCell(cell(formatDate(h.getEntryDate()), false));
+            th(actes, "Acte");
+            th(actes, "Commentaire");
+            th(actes, "Prix");
+            th(actes, "Date");
 
-            hospTable.addCell(cell("Date de sortie :", true));
-            hospTable.addCell(cell(formatDate(h.getReleaseDate()), false));
+            h.getSurveillanceSheets().forEach(s ->
+                s.getActs().forEach(a -> {
+                    td(actes, a.getNom());
+                    td(actes, "-");
+                    td(actes, "1000");
+                    td(actes, s.getSheetDate().toString());
+                })
+            );
 
-            hospTable.addCell(cell("Service :", true));
-            hospTable.addCell(cell(h.getService(), false));
+            document.add(actes);
 
-            hospTable.addCell(cell("Statut :", true));
-            hospTable.addCell(cell(h.getStatus().name(), false));
+            /* ================= TOTAL ================= */
+            document.add(new Paragraph("\nMONTANT TOTAL DE L’HOSPITALISATION :", section));
+            document.add(new Paragraph("TOTAL = XXXXX FCFA\n\n", header));
 
-            hospTable.addCell(cell("Motif d'admission :", true));
-            hospTable.addCell(cell(h.getAdmissionReason(), false));
-
-            document.add(hospTable);
-            document.add(new Paragraph("\n"));
-
-            // ---------- DIAGNOSTIC ----------
-            document.add(new Paragraph("🩺 Diagnostic", headerFont));
-            document.add(new Paragraph("\n"));
-            document.add(new Paragraph("Diagnostic d'entrée :", labelFont));
-            document.add(new Paragraph(defaultValue(h.getEntryDiagnosis()), valueFont));
-            document.add(new Paragraph("\n"));
-
-            document.add(new Paragraph("Diagnostic final :", labelFont));
-            document.add(new Paragraph(defaultValue(h.getFinalDiagnosis()), valueFont));
-            document.add(new Paragraph("\n\n"));
-
-            // ---------- FOOTER ----------
-            Paragraph disclaimer = new Paragraph("Ce document est strictement confidentiel et protégé par le secret médical.", valueFont);
-            disclaimer.setAlignment(Element.ALIGN_CENTER);
-            document.add(disclaimer);
-
-            document.add(new Paragraph("\n\nFait le : " + DATE_FORMAT.format(java.time.Instant.now().atZone(java.time.ZoneId.systemDefault()))));
-            document.add(new Paragraph("\n\nSignature et cachet du médecin\n\n____________________________"));
+            document.add(new Paragraph("SIGNATURE", section));
 
             document.close();
             return baos.toByteArray();
+
         } catch (Exception e) {
-            throw new RuntimeException("Erreur lors de la génération du PDF", e);
+            throw new RuntimeException(e);
         }
     }
 
-    // -------------------- Utilities --------------------
+    /* ================= HELPERS ================= */
 
-    private static PdfPCell cell(String text, boolean bold) {
-        Font font = bold ? new Font(Font.HELVETICA, 11, Font.BOLD) : new Font(Font.HELVETICA, 11);
-        PdfPCell c = new PdfPCell(new Phrase(defaultValue(text), font));
-        c.setPadding(8);
-        return c;
+    private static void cell(PdfPTable t, String l, String v, Font f) {
+        t.addCell(new PdfPCell(new Phrase(l, f)));
+        t.addCell(new PdfPCell(new Phrase(v != null ? v : "-", f)));
     }
 
-    private static String formatDate(Instant instant) {
-        return instant != null ? DATE_FORMAT.format(instant.atZone(java.time.ZoneId.systemDefault())) : "N/A";
+    private static void th(PdfPTable t, String txt) {
+        PdfPCell c = new PdfPCell(new Phrase(txt));
+        c.setBackgroundColor(Color.LIGHT_GRAY);
+        t.addCell(c);
     }
 
-    private static String defaultValue(String v) {
-        return (v == null || v.isBlank()) ? "N/A" : v;
+    private static void td(PdfPTable t, String txt) {
+        t.addCell(new PdfPCell(new Phrase(txt != null ? txt : "-")));
     }
+
+
+
+    private static String formatBP(Integer sys, Integer dia) {
+        if (sys == null && dia == null) return "-";
+        return (sys != null ? sys : "?") + "/" + (dia != null ? dia : "?");
+    }
+
+    private static String extractMedicationNames(sn.ngirwi.medical.domain.SurveillanceSheet sheet) {
+        if (sheet.getMedications() == null || sheet.getMedications().isEmpty()) return "-";
+        return sheet.getMedications().stream()
+            .map(m -> m.getNom() + " (" + m.getQuantite() + ")")
+            .reduce((a,b) -> a + ", " + b)
+            .orElse("-");
+    }
+
+    private static String extractActsNames(sn.ngirwi.medical.domain.SurveillanceSheet sheet) {
+        if (sheet.getActs() == null || sheet.getActs().isEmpty()) return "-";
+        return sheet.getActs().stream()
+            .map(a -> a.getNom() + " (" + a.getQuantite() + ")")
+            .reduce((a,b) -> a + ", " + b)
+            .orElse("-");
+    }
+
 }
-

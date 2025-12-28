@@ -32,6 +32,8 @@ import tech.jhipster.web.util.HeaderUtil;
 import tech.jhipster.web.util.PaginationUtil;
 import tech.jhipster.web.util.ResponseUtil;
 
+import static tech.jhipster.config.JHipsterDefaults.Mail.baseUrl;
+
 /**
  * REST controller for managing users.
  * <p>
@@ -123,7 +125,6 @@ public class UserResource {
             throw new EmailAlreadyUsedException();
         } else {
             User newUser = userService.createUser(userDTO);
-            mailService.sendCreationEmail(newUser);
             return ResponseEntity
                 .created(new URI("/api/admin/users/" + newUser.getLogin()))
                 .headers(

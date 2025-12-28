@@ -48,18 +48,17 @@ spring:
     # Remove 'faker' if you do not want the sample data to be loaded automatically
     #contexts: dev, faker
     contexts: dev
+
   mail:
-    host: smtp.sendgrid.net
+    host: sandbox.smtp.mailtrap.io
     port: 587
-    username: apikey
-    # Use environment variable; no hardcoded API keys in source control
-    password: ${SENDGRID_API_KEY:}
+    username: 605846399a492f
+    password: da10d7de7ecb12
     protocol: smtp
-    tls: true
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
-      mail.smtp.ssl.trust: smtp.sendgrid.net
+      mail.smtp.starttls.required: false
     default-encoding: UTF-8
   messages:
     cache-duration: PT1S # 1 second, see the ISO 8601 standard

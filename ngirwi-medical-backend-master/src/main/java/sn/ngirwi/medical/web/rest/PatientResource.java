@@ -162,7 +162,8 @@ public class PatientResource {
         return ResponseEntity.ok().headers(headers).body(page.getContent());
     }
 
-    @GetMapping("/patientsbis/{id}")
+    //@GetMapping("/patientsbis/{id}")
+    @GetMapping("/patients/bis/{id}")
     public ResponseEntity<List<PatientDTO>> getAllPatientsBis(
         @org.springdoc.api.annotations.ParameterObject Pageable pageable,
         @RequestParam(required = false) String filter,

@@ -13,27 +13,30 @@ import sn.ngirwi.medical.service.dto.HospitalisationDTO;
 public interface HospitalisationMapper {
     // Entity -> DTO
 
+    // Entity -> DTO
     @Mapping(source = "patient.id", target = "patientId")
     @Mapping(source = "dossierMedical.id", target = "dossierMedicalId")
     @Mapping(target = "surveillanceSheetIds", expression = "java(mapSurveillanceSheetIds(hospitalisation.getSurveillanceSheets()))")
-    @Mapping(target = "dailyRate", source = "dailyRate")
-    @Mapping(target = "comfortFees", source = "comfortFees")
-    @Mapping(target = "feeOverrun", source = "feeOverrun")
-    @Mapping(target = "insuranceCoveragePercent", source = "insuranceCoveragePercent")
-    @Mapping(target = "totalAmount", source = "totalAmount")
+    @Mapping(source = "dailyRate", target = "dailyRate")
+    @Mapping(source = "comfortFees", target = "comfortFees")
+    @Mapping(source = "feeOverrun", target = "feeOverrun")
+    @Mapping(source = "insuranceCoveragePercent", target = "insuranceCoveragePercent")
+    @Mapping(source = "totalAmount", target = "totalAmount")
+    @Mapping(source = "doctorName", target = "doctorName") // ✔ AJOUT
     HospitalisationDTO toDto(Hospitalisation hospitalisation);
 
     // DTO -> Entity
-
     @Mapping(source = "patientId", target = "patient")
     @Mapping(source = "dossierMedicalId", target = "dossierMedical")
     @Mapping(target = "surveillanceSheets", ignore = true)
-    @Mapping(target = "dailyRate", source = "dailyRate")
-    @Mapping(target = "comfortFees", source = "comfortFees")
-    @Mapping(target = "feeOverrun", source = "feeOverrun")
-    @Mapping(target = "insuranceCoveragePercent", source = "insuranceCoveragePercent")
-    @Mapping(target = "totalAmount", source = "totalAmount")
+    @Mapping(source = "dailyRate", target = "dailyRate")
+    @Mapping(source = "comfortFees", target = "comfortFees")
+    @Mapping(source = "feeOverrun", target = "feeOverrun")
+    @Mapping(source = "insuranceCoveragePercent", target = "insuranceCoveragePercent")
+    @Mapping(source = "totalAmount", target = "totalAmount")
+    @Mapping(source = "doctorName", target = "doctorName") // ✔ AJOUT
     Hospitalisation toEntity(HospitalisationDTO dto);
+
 
     // Helper Methods
 

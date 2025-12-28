@@ -99,10 +99,21 @@ public class MailService {
     }
 
     @Async
-    public void sendCreationEmail(User user) {
-        log.debug("Sending creation email to '{}'", user.getEmail());
-        sendEmailFromTemplate(user, "mail/creationEmail", "email.activation.title");
+    public void sendCreationEmail(User user, String rawPassword) {
+        String subject = "Création de votre compte";
+        String content =
+            "Bonjour " + user.getFirstName() + ",\n\n" +
+                "Votre compte a été créé avec succès.\n" +
+                "Voici vos informations :\n\n" +
+                "Login : " + user.getLogin() + "\n" +
+                "Mot de passe : " + rawPassword + "\n\n" +
+                "Merci de vous connecter et changer votre mot de passe.\n\n" +
+                "Cordialement,\nL'équipe Ngirwi Medical.";
+
+        sendEmail(user.getEmail(), subject, content, false, false);
     }
+
+
 
     @Async
     public void sendPasswordResetMail(User user) {
