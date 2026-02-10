@@ -222,17 +222,15 @@ public class PrescriptionService {
 
     public Set<Medecine> medecineMapper(PrescriptionDTO prescriptionDTO) {
         Set<Medecine> s = new HashSet<>();
-        //for (int i = 0; i < prescriptionDTO.getMedecines().toArray().length; i++){
         for (PrescriptionForm f : prescriptionDTO.getMedecines()) {
             Medecine m = new Medecine();
-            //m.setId(prescriptionDTO.getId() + i);
+            m.setId(f.getId()); // Preserve ID for smart update
             m.setName(f.getName());
-            m.setDuration(Long.valueOf(f.getDuration()));
-            m.setFrequency(Double.valueOf(f.getFrequency()));
+            // Null-safe conversion: empty/null/non-numeric strings become null (database allows nullable)
+            m.setDuration(parseLongSafe(f.getDuration()));
+            m.setFrequency(parseDoubleSafe(f.getFrequency()));
             s.add(m);
         }
-        //}
-
         return s;
     }
 
@@ -261,35 +259,75 @@ public class PrescriptionService {
 
     public PrescriptionDTO updateBis(PrescriptionDTO prescriptionDTO) {
         log.debug("Request to update Prescription : {}", prescriptionDTO);
-        Prescription prescription = prescriptionMapper.toEntity(prescriptionDTO);
-        log.debug("VALUES : {}", prescription);
-        log.debug("FORM : {}", prescription.getMedecines());
-
-        //prescription = prescriptionRepository.save(prescription);
-
-        for (Medecine medecine : prescription.getMedecines()) {
-            if (
-                prescription.getId() != null &&
-                medecineRepository.existsByNameAndDurationAndFrequencyAndOrdonance_Id(
-                    medecine.getName(),
-                    medecine.getDuration(),
-                    medecine.getFrequency(),
-                    prescriptionDTO.getId()
-                )
-            ) {
-                Medecine medecine1 = medecineRepository.findByNameAndDurationAndFrequencyAndOrdonance_Id(
-                    medecine.getName(),
-                    medecine.getDuration(),
-                    medecine.getFrequency(),
-                    prescriptionDTO.getId()
-                );
-                medecineRepository.deleteById(medecine1.getId());
+        
+        if (prescriptionDTO.getId() == null) {
+            throw new IllegalArgumentException("Prescription ID cannot be null for update");
+        }
+        
+        // Get existing medicines from DB
+        List<Medecine> existingMedecines = medecineRepository.findByOrdonance_Id(prescriptionDTO.getId());
+        
+        // Map medicines from DTO (includes IDs for existing ones)
+        Set<Medecine> submittedMedecines = medecineMapper(prescriptionDTO);
+        
+        // Collect IDs of submitted medicines (for deletion check)
+        Set<Long> submittedIds = new HashSet<>();
+        for (Medecine m : submittedMedecines) {
+            if (m.getId() != null) {
+                submittedIds.add(m.getId());
             }
+        }
+        
+        // Save the prescription first
+        Prescription prescription = prescriptionMapper.toEntity(prescriptionDTO);
+        prescription = prescriptionRepository.save(prescription);
+        
+        // Smart update: DELETE medicines that were removed by user
+        for (Medecine existing : existingMedecines) {
+            if (!submittedIds.contains(existing.getId())) {
+                log.debug("Deleting removed medicine: {}", existing.getId());
+                medecineRepository.deleteById(existing.getId());
+            }
+        }
+        
+        // Smart update: UPDATE existing or CREATE new medicines
+        for (Medecine medecine : submittedMedecines) {
             medecine.setOrdonance(prescription);
+            if (medecine.getId() != null) {
+                // UPDATE existing medicine
+                log.debug("Updating existing medicine: {}", medecine.getId());
+            } else {
+                // CREATE new medicine
+                log.debug("Creating new medicine: {}", medecine.getName());
+            }
             medecineRepository.save(medecine);
         }
 
-        //return prescriptionMapper.toDto(prescription);
+        prescriptionDTO.setId(prescription.getId());
         return prescriptionDTO;
+    }
+
+    /**
+     * Parse a string to Long, returning null if the input is null, empty, or not a valid number.
+     */
+    private static Long parseLongSafe(String value) {
+        if (value == null || value.trim().isEmpty()) return null;
+        try {
+            return Long.valueOf(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Parse a string to Double, returning null if the input is null, empty, or not a valid number.
+     */
+    private static Double parseDoubleSafe(String value) {
+        if (value == null || value.trim().isEmpty()) return null;
+        try {
+            return Double.valueOf(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

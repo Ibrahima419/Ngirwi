@@ -52,7 +52,7 @@ public class Bill implements Serializable {
     @JsonIgnoreProperties(value = { "dossierMedical", "consultations" }, allowSetters = true)
     private Patient patient;
 
-    @OneToMany(mappedBy = "bill")
+    @OneToMany(mappedBy = "bill", cascade = CascadeType.ALL, orphanRemoval = true)
     @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     @JsonIgnoreProperties(value = { "bill" }, allowSetters = true)
     private Set<BillElement> billElements = new HashSet<>();

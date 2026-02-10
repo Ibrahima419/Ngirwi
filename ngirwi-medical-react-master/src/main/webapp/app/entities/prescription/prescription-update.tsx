@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card } from 'reactstrap';
 import { isNumber, ValidatedField, ValidatedForm } from 'react-jhipster';
+import { toast } from 'react-toastify';
 import {
   convertDateTimeFromServerToDate,
   convertDateTimeFromServerToHours,
@@ -17,8 +18,7 @@ import { getEntity, updateEntity, reset, createEntityBis } from './prescription.
 import { getEntitiesBis as getPatients } from '../patient/patient.reducer';
 import { getMedecineByPrescriptionId } from '../medecine/medecine.reducer';
 import { IMedecine } from 'app/shared/model/medecine.model';
-import { getEntity as getHospital } from '../hospital/hospital.reducer';
-//pdf
+import { getMyHospital } from '../hospital/hospital.reducer';
 import { Page, Text, Image, View, Document, PDFDownloadLink, Font } from '@react-pdf/renderer';
 import Header from 'app/shared/layout/header/header';
 import { IoIosAddCircle, IoIosAddCircleOutline, IoIosArrowBack, IoIosRemoveCircle } from 'react-icons/io';
@@ -41,19 +41,11 @@ export const PrescriptionUpdate = () => {
   const loading = useAppSelector(state => state.prescription.loading);
   const updating = useAppSelector(state => state.prescription.updating);
   const updateSuccess = useAppSelector(state => state.prescription.updateSuccess);
+  const errorMessage = useAppSelector(state => state.prescription.errorMessage);
 
   const account = useAppSelector(state => state.authentication.account);
   const [consul, setConsul] = useState(idConsultation);
   const [medecines, setMedecine] = useState<IMedecine[]>([]);
-  //info ordonance
-  // const [formValues, setFormValues] = useState([{ medecine: '', duration: '', frequency: '' }]);
-
-  // if (medecines !== null && medecines !== null ) {
-  //   let arrayB = [];
-  //   medecines.forEach(medecine => {
-  //     medecines.map
-  //   });
-  // }
 
   const handleConsulChange = e => {
     setConsul(e.target.value);
@@ -65,18 +57,6 @@ export const PrescriptionUpdate = () => {
   function rtn() {
     window.history.back();
   }
-  // useEffect(() => {
-  //   if (isNew) {
-  //     dispatch(reset());
-  //   } else {
-  //     dispatch(getEntity(id));
-  //     getMedecineByPrescriptionId(Number(id)).then(data => { setMedecine(data); }).catch(error => {
-  //       console.error('Error fetching cars:', error);
-  //     }
-  //   }
-  //   dispatch(getPatients({}));
-  //   dispatch(getConsultations({}));
-  // }, []);
 
   useEffect(() => {
     if (isNew) {
@@ -88,12 +68,14 @@ export const PrescriptionUpdate = () => {
           setMedecine(data);
         })
         .catch(error => {
-          console.error('Error fetching medicine:', error);
+          if (DEVELOPMENT) {
+            console.error('Error fetching medicine:', error);
+          }
         });
     }
 
-    dispatch(getHospital(account.hospitalId));
-    dispatch(getPatients({ id: account.hospitalId !== null && account.hospitalId !== undefined ? account.hospitalId : 0 }));
+    dispatch(getMyHospital());
+    dispatch(getPatients({}));
     dispatch(getConsultations({}));
   }, [isNew, id, dispatch, idConsultation]); // Specify dependencies here
 
@@ -109,9 +91,17 @@ export const PrescriptionUpdate = () => {
 
   useEffect(() => {
     if (updateSuccess) {
+      toast.success(isNew ? 'Ordonnance créée avec succès!' : 'Ordonnance mise à jour avec succès!');
       handleClose();
     }
   }, [updateSuccess]);
+
+  // Display error message when creation/update fails
+  useEffect(() => {
+    if (errorMessage) {
+      toast.error(errorMessage);
+    }
+  }, [errorMessage]);
 
   const saveEntity = values => {
     values.creationDate = convertDateTimeToServer(values.creationDate);
@@ -120,7 +110,7 @@ export const PrescriptionUpdate = () => {
       ...prescriptionEntity,
       ...values,
       consultation: consultations.find(it => it.id.toString() === values.consultation.toString()),
-      medecines: medecines,
+      medecines,
     };
 
     if (isNew) {
@@ -143,14 +133,13 @@ export const PrescriptionUpdate = () => {
           consultation: prescriptionEntity?.consultation?.id,
         };
 
-  let handleChange = (i, e) => {
-    let newFormValues = [...medecines]; // Create a copy of the state array
-    newFormValues[i][e.target.name] = e.target.value; // Update the specific field in the copied array
-    // console.log(newFormValues);
-    setMedecine(newFormValues); // Update the state with the modified array
+  const handleChange = (i, e) => {
+    const newFormValues = [...medecines];
+    newFormValues[i] = { ...newFormValues[i], [e.target.name]: e.target.value };
+    setMedecine(newFormValues);
   };
 
-  let addFormFields = () => {
+  const addFormFields = () => {
     const newMedecine: IMedecine = {
       id: undefined, // Assuming id is auto-generated or managed elsewhere
       name: null,
@@ -161,17 +150,19 @@ export const PrescriptionUpdate = () => {
     setMedecine([...medecines, newMedecine]);
   };
 
-  if (medecines.length === 0) {
-    addFormFields();
-  }
+  useEffect(() => {
+    if (medecines.length === 0) {
+      addFormFields();
+    }
+  }, [medecines.length]);
 
-  let removeFormFields = i => {
-    let newFormValues = [...medecines];
+  const removeFormFields = i => {
+    const newFormValues = [...medecines];
     newFormValues.splice(i, 1);
     setMedecine(newFormValues);
   };
   let p;
-  let infosPatient = () => {
+  const infosPatient = () => {
     const selectedConsultation = consultations.find(consult => consult.id.toString() === consul);
     if (selectedConsultation) {
       return (
@@ -187,9 +178,9 @@ export const PrescriptionUpdate = () => {
   };
 
   p = infosPatient();
-  // console.log(consul);
-  let showID = () => {
-    console.log(p);
+
+  const showID = () => {
+    // Function to show patient ID
   };
 
   Font.register({
@@ -223,7 +214,14 @@ export const PrescriptionUpdate = () => {
             <Text style={{ fontSize: '15px', fontWeight: 'thin' }}>{hospital?.phone}</Text>
           </View>
           <View>
-            <Image style={{ width: '60px', height: '60px' }} src="content/images/logo-medecin-240x300.png" />
+            <Image
+              style={{ width: '60px', height: '60px' }}
+              src={
+                hospital?.logo && hospital?.logoContentType
+                  ? `data:${hospital.logoContentType};base64,${hospital.logo}`
+                  : 'content/images/logo-medecin-240x300.png'
+              }
+            />
           </View>
           <View style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
             <Text style={{ fontSize: '20px', color: 'green', marginBottom: '9px', fontWeight: 'bold' }}>{hospital?.name}</Text>
@@ -268,7 +266,11 @@ export const PrescriptionUpdate = () => {
 
         {/* Watermark Image */}
         <Image
-          src="content/images/logo-medecin-240x300.png"
+          src={
+            hospital?.logo && hospital?.logoContentType
+              ? `data:${hospital.logoContentType};base64,${hospital.logo}`
+              : 'content/images/logo-medecin-240x300.png'
+          }
           style={{ position: 'absolute', top: '335px', left: '15vw', zIndex: '1', width: '70vw', height: '40vh', opacity: 0.1 }}
         />
 
@@ -395,194 +397,6 @@ export const PrescriptionUpdate = () => {
         </View>
       </Page>
     </Document>
-
-    // <Document>
-    //   <Page style={{ display: 'flex', flexDirection: 'column', fontFamily: 'Poppins' }}>
-    //     <View
-    //       style={{
-    //         display: 'flex',
-    //         flexDirection: 'row',
-    //         justifyContent: 'space-around',
-    //         alignItems: 'center',
-    //         borderBottom: '1px solid green',
-    //         paddingBottom: '10px',
-    //         marginTop: '20px',
-    //       }}
-    //     >
-    //       <View style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-around', alignItems: 'center' }}>
-    //         <Text style={{ fontSize: '18px', color: 'green', marginBottom: '9px', fontWeight: 'bold' }}>
-    //           {account.lastName + ' ' + account.firstName}
-    //         </Text>
-    //         <Text style={{ fontSize: '15px', marginBottom: '9px', fontWeight: 'medium' }}>Médecin général</Text>
-    //         <Text style={{ fontSize: '15px', fontWeight: 'thin' }}>{hospital?.phone}</Text>
-    //       </View>
-    //       <View>
-    //         <Image style={{ width: '60px', height: '60px' }} src="content/images/logo-medecin-240x300.png" />
-    //       </View>
-    //       <View style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-around', alignItems: 'center' }}>
-    //         <Text style={{ fontSize: '20px', color: 'green', marginBottom: '9px', fontWeight: 'bold' }}>{hospital?.name}</Text>
-    //         <Text style={{ fontSize: '15px', marginBottom: '9px', fontWeight: 'medium' }}>{hospital?.adress}</Text>
-    //         {/* <Text style={{ fontSize: '15px', fontWeight: 'thin' }}>Email Clinique</Text> */}
-    //         <Text style={{ fontSize: '15px', fontWeight: 'thin' }}></Text>
-    //       </View>
-    //     </View>
-    //     <View style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-around', alignItems: 'center', marginTop: '15px' }}>
-    //       <Text style={{ fontSize: '35px', fontWeight: 'extrabold', marginBottom: '9px' }}>Ordonnance Médicale</Text>
-
-    //       <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-    //         <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginRight: '10px' }}>
-    //           <Text style={{ fontSize: '18px', marginBottom: '9px' }}>Fait à Dakar Le:</Text>
-    //           <Text style={{ fontSize: '18px', marginBottom: '9px' }}>Nom & Prénom(s):</Text>
-    //         </View>
-    //         <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-    //           <Text style={{ fontSize: '18px', marginBottom: '9px' }}>
-    //             {convertDateTimeFromServerToDate(displayDefaultDateTime()) +
-    //               ' à ' +
-    //               convertDateTimeFromServerToHours(displayDefaultDateTime())}
-    //           </Text>
-    //           <Text>
-    //             {prescriptionEntity.consultation?.patient
-    //               ? `${prescriptionEntity.consultation.patient.lastName.toUpperCase()} ${
-    //                   prescriptionEntity.consultation.patient.lastname
-    //                     ? prescriptionEntity.consultation.patient.firstName
-    //                         .split(' ')
-    //                         .map(a => a.charAt(0).toUpperCase() + a.slice(1))
-    //                         .join(' ')
-    //                     : ''
-    //                 }`
-    //               : infosPatient()}
-    //           </Text>
-    //         </View>
-    //       </View>
-    //     </View>
-    //     <Image
-    //       src="content/images/logo-medecin-240x300.png"
-    //       style={{ position: 'absolute', top: '335', left: '15vw', zIndex: '1', width: '70vw', height: '40vh', opacity: 0.1 }}
-    //     />
-    //     <View
-    //       style={{
-    //         display: 'flex',
-    //         flexDirection: 'column',
-    //         alignItems: 'center',
-    //         marginTop: '15px',
-    //         border: '3px solid silver',
-    //         marginLeft: '10vw',
-    //         marginRight: '5vw',
-    //         width: '80vw',
-    //         zIndex: '0',
-    //       }}
-    //     >
-    //       <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-    //         <Text
-    //           style={{
-    //             width: '40vw',
-    //             borderRight: '3px solid silver',
-    //             textTransform: 'uppercase',
-    //             fontSize: '15px',
-    //             color: 'green',
-    //             paddingTop: '3px',
-    //             paddingBottom: '5px',
-    //             textAlign: 'center',
-    //           }}
-    //         >
-    //           Médicament(s)
-    //         </Text>
-    //         <Text
-    //           style={{
-    //             width: '20vw',
-    //             textTransform: 'uppercase',
-    //             fontSize: '15px',
-    //             color: 'green',
-    //             paddingTop: '3px',
-    //             paddingBottom: '5px',
-    //             textAlign: 'center',
-    //           }}
-    //         >
-    //           Durée
-    //         </Text>
-    //         <Text
-    //           style={{
-    //             width: '20vw',
-    //             borderLeft: '3px solid silver',
-    //             textTransform: 'uppercase',
-    //             fontSize: '15px',
-    //             color: 'green',
-    //             paddingTop: '3px',
-    //             paddingBottom: '5px',
-    //             textAlign: 'center',
-    //           }}
-    //         >
-    //           Fréquence
-    //         </Text>
-    //       </View>
-    //       {medecines.map((element, i) =>
-    //         true ? (
-    //           <View key={`entity-${i}`} style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-    //             <Text
-    //               style={{
-    //                 width: '40vw',
-    //                 minHeight: '4vh',
-    //                 borderRight: '3px solid silver',
-    //                 borderTop: '3px solid silver',
-    //                 fontSize: '15px',
-    //                 paddingTop: '5px',
-    //                 paddingBottom: '3px',
-    //                 textAlign: 'center',
-    //               }}
-    //             >
-    //               {element.name}
-    //             </Text>
-    //             <Text
-    //               style={{
-    //                 width: '20vw',
-    //                 minHeight: '4vh',
-    //                 borderTop: '3px solid silver',
-    //                 fontSize: '15px',
-    //                 paddingTop: '5px',
-    //                 paddingBottom: '3px',
-    //                 textAlign: 'center',
-    //               }}
-    //             >
-    //               {element.duration !== null && element.duration !== undefined ?
-    //                 element.duration
-    //               : ''} J
-    //             </Text>
-    //             <Text
-    //               style={{
-    //                 width: '20vw',
-    //                 minHeight: '4vh',
-    //                 borderTop: '3px solid silver',
-    //                 borderLeft: '3px solid silver',
-    //                 fontSize: '15px',
-    //                 paddingTop: '5px',
-    //                 paddingBottom: '3px',
-    //                 textAlign: 'center',
-    //               }}
-    //             >
-    //               {element.frequency} /J
-    //             </Text>
-    //           </View>
-    //         ) : null
-    //       )}
-    //     </View>
-    //     <View
-    //       style={{
-    //         borderTop: '2px solid green',
-    //         position: 'absolute',
-    //         top: '93vh',
-    //         width: '100vw',
-    //         display: 'flex',
-    //         flexDirection: 'column',
-    //         alignItems: 'center',
-    //         marginBottom: '10px',
-    //         paddingTop: '6px',
-    //       }}
-    //     >
-    //       <Text style={{ fontSize: '14px' }}>Propulsé par l&apos;entreprise NGIRWI S.A.R.L</Text>
-    //       <Text style={{ fontSize: '12px' }}>www.ngirwisarl.com</Text>
-    //     </View>
-    //   </Page>
-    // </Document>
   );
 
   return (
@@ -659,24 +473,29 @@ export const PrescriptionUpdate = () => {
             </span>
             <div style={{ display: 'flex', flexDirection: 'row', gap: '3vh' }}>
               <PDFDownloadLink
-                style={{ backgroundColor: 'transparent', textDecoration: 'none' }}
+                style={{ textDecoration: 'none' }}
                 document={doc}
-                // fileName={`ordonnance_${account.login}_${JSON.stringify(displayDefaultDateTime())}`}
                 fileName={`ordonnance_${JSON.stringify(displayDefaultDateTime())}`}
               >
                 <span
                   style={{
                     cursor: 'pointer',
-                    fontWeight: '900',
-                    color: '#B3C0D3',
+                    fontWeight: '600',
+                    color: '#ffffff',
                     textAlign: 'center',
                     display: 'flex',
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: '3px',
+                    gap: '8px',
+                    backgroundColor: '#56B5C5',
+                    padding: '10px 20px',
+                    borderRadius: '25px',
+                    boxShadow: '0 4px 15px rgba(86, 181, 197, 0.3)',
+                    transition: 'all 0.3s ease',
+                    fontSize: '14px',
                   }}
                 >
-                  {React.createElement(BiDownload, { size: '23' })} <span>Télécharger</span>
+                  {React.createElement(BiDownload, { size: '20' })} <span>Télécharger PDF</span>
                 </span>
               </PDFDownloadLink>
             </div>

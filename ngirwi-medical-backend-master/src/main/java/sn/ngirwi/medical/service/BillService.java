@@ -132,15 +132,18 @@ public class BillService {
         return billDTO;
     }
 
+    /**
+     * Calcule le total de la facture à partir des éléments en mémoire.
+     * 
+     * IMPORTANT: On utilise toujours le calcul en mémoire plutôt que la requête native
+     * pour éviter les problèmes de timing transactionnel (la requête native pourrait
+     * ne pas voir les éléments tout juste sauvegardés dans la même transaction).
+     * 
+     * Formule: Σ(prix × quantité × (1 - remise/100))
+     */
     public BigDecimal calculateTotal(Bill bill) {
-        // Prefer DB-side aggregation when the bill is already persisted (has an id)
-        if (bill.getId() != null) {
-            BigDecimal dbTotal = billElementRepository.computeTotalByBillId(bill.getId());
-            return dbTotal == null ? BigDecimal.ZERO : dbTotal.setScale(0, java.math.RoundingMode.HALF_UP);
-        }
-
         BigDecimal total = BigDecimal.ZERO;
-        if (bill.getBillElements() == null) {
+        if (bill.getBillElements() == null || bill.getBillElements().isEmpty()) {
             log.debug("No BillElements found in bill");
             return total;
         }
@@ -183,33 +186,49 @@ public class BillService {
             .findById(billDTO.getId())
             .ifPresent(existing -> assertSameHospital(existing.getPatient() != null ? existing.getPatient().getHospitalId() : null));
 
+        // Get existing elements from DB
+        List<BillElement> existingElements = billElementRepository.findByBill_Id(billDTO.getId());
+        
+        // Map the bill and its elements (preserves IDs from DTO)
         Bill bill = billMapper.toEntity(billDTO);
         bill = mapElements(billDTO, bill);
-
-        for (BillElement element : bill.getBillElements()) {
-            if (
-                billDTO.getId() != null &&
-                billElementRepository.existsByNameAndPriceAndPercentageAndQuantityAndBill_Id(
-                    element.getName(),
-                    element.getPrice(),
-                    element.getPercentage(),
-                    element.getQuantity(),
-                    billDTO.getId()
-                )
-            ) {
-                billElementRepository.deleteByNameAndPriceAndPercentageAndQuantityAndBill_Id(
-                    element.getName(),
-                    element.getPrice(),
-                    element.getPercentage(),
-                    element.getQuantity(),
-                    billDTO.getId()
-                );
+        
+        // Collect IDs of submitted elements (for deletion check)
+        Set<Long> submittedIds = new HashSet<>();
+        if (bill.getBillElements() != null) {
+            for (BillElement el : bill.getBillElements()) {
+                if (el.getId() != null) {
+                    submittedIds.add(el.getId());
+                }
             }
-            element.setBill(bill);
-            element = billElementRepository.save(element);
-            log.debug("SAVE CHECK " + element);
+        }
+        
+        // Smart update: DELETE elements that were removed by user
+        for (BillElement existing : existingElements) {
+            if (!submittedIds.contains(existing.getId())) {
+                log.debug("Deleting removed bill element: {}", existing.getId());
+                billElementRepository.deleteById(existing.getId());
+            }
         }
 
+        // Save bill first
+        bill = billRepository.save(bill);
+
+        // Smart update: UPDATE existing or CREATE new elements
+        if (bill.getBillElements() != null) {
+            for (BillElement element : bill.getBillElements()) {
+                element.setBill(bill);
+                if (element.getId() != null) {
+                    log.debug("Updating existing bill element: {}", element.getId());
+                } else {
+                    log.debug("Creating new bill element: {}", element.getName());
+                }
+                billElementRepository.save(element);
+            }
+        }
+        
+        // Recalculate total after all elements are saved
+        bill.setTotal(calculateTotal(bill));
         bill = billRepository.save(bill);
 
         log.debug(bill.toString());
@@ -291,6 +310,8 @@ public class BillService {
 
     /**
      * Delete the bill by id.
+     * cascade = ALL + orphanRemoval = true on Bill.billElements ensures
+     * that deleting the Bill automatically deletes all its BillElements.
      *
      * @param id the id of the entity.
      */
@@ -299,10 +320,6 @@ public class BillService {
         billRepository
             .findById(id)
             .ifPresent(existing -> assertSameHospital(existing.getPatient() != null ? existing.getPatient().getHospitalId() : null));
-        List<BillElement> billElements = billElementRepository.findByBill_Id(id);
-        for (BillElement b : billElements) {
-            billElementRepository.deleteById(b.getId());
-        }
         billRepository.deleteById(id);
     }
 

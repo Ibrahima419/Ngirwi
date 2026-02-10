@@ -1,7 +1,19 @@
+/**
+ * Composant de gestion des factures médicales
+ * 
+ * Architecture: Ce composant gère trois modes d'affichage distincts :
+ * - Création (isNew=true) : Formulaire vierge avec calcul du total en temps réel
+ * - Édition (idEdit=undefined) : Modification avec total "Calculé à la sauvegarde"
+ * - Consultation (idEdit='voir') : Lecture seule avec tous les champs désactivés
+ * 
+ * Règle métier importante: Assurance et IPM sont mutuellement exclusifs.
+ * Un patient ne peut avoir qu'un seul type de couverture à la fois.
+ */
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Card } from 'reactstrap';
+import { Button, Card, FormGroup, Label } from 'reactstrap';
 import { isNumber, ValidatedField, ValidatedForm } from 'react-jhipster';
+import { toast } from 'react-toastify';
 
 import {
   convertDateTimeFromServer,
@@ -14,18 +26,19 @@ import {
 import { useAppDispatch, useAppSelector } from 'app/config/store';
 
 import { getEntitiesBis as getPatients } from 'app/entities/patient/patient.reducer';
-import { getEntity as getHospital } from '../hospital/hospital.reducer';
+import { getMyHospital } from '../hospital/hospital.reducer';
 import { createEntity, getEntity, reset, updateEntity } from './bill.reducer';
 import { getElemntByBillId } from '../bill-element/bill-element.reducer';
-
-//pdf
-import { Page, Text, View, Document, PDFDownloadLink, Font } from '@react-pdf/renderer';
+import { Page, Text, View, Document, PDFDownloadLink, Font, Image } from '@react-pdf/renderer';
 import Header from 'app/shared/layout/header/header';
 import { IoIosAddCircleOutline, IoIosArrowBack, IoIosAddCircle, IoIosRemoveCircle } from 'react-icons/io';
 import { BiDownload } from 'react-icons/bi';
 import { IBillElement } from 'app/shared/model/bill-element.model';
+
 export const BillUpdate = () => {
   const dispatch = useAppDispatch();
+  
+  // Référentiels des organismes payeurs au Sénégal
   const assurance = [
     { label: '', id: '0' },
     { label: 'ALLIANCE INTERNATIONAL', id: '1' },
@@ -52,6 +65,7 @@ export const BillUpdate = () => {
     { label: 'SONAM', id: '22' },
     { label: 'UASEN VIE', id: '23' },
   ];
+  
   const ipm = [
     { label: '', id: '0' },
     { label: 'AFRIC MANAGEMENT', id: '1' },
@@ -66,7 +80,6 @@ export const BillUpdate = () => {
     { label: 'CITIBANK', id: '10' },
     { label: 'CNCAS', id: '11' },
     { label: 'COTONIERE DU CAP VERT', id: '12' },
-    { label: 'CNCAS', id: '13' },
     { label: 'CSE', id: '14' },
     { label: 'CSS', id: '15' },
     { label: 'ECOBANK', id: '16' },
@@ -104,108 +117,164 @@ export const BillUpdate = () => {
     { label: 'TRANSIT', id: '48' },
     { label: 'TRANSPORT AERIEN', id: '49' },
   ];
+  
   const navigate = useNavigate();
 
+  // Extraction des paramètres de route pour déterminer le mode d'affichage
   const { id } = useParams<'id'>();
   const { idPatient } = useParams<'idPatient'>();
   const { idEdit } = useParams<'idEdit'>();
   const isNew = id === undefined;
 
+  // État Redux
   const patients = useAppSelector(state => state.patient.entities);
   const hospital = useAppSelector(state => state.hospital.entity);
   const billEntity = useAppSelector(state => state.bill.entity);
   const updating = useAppSelector(state => state.bill.updating);
   const updateSuccess = useAppSelector(state => state.bill.updateSuccess);
-  const [blockIPM, setBlockIPM] = useState('');
+  
+  // Source de vérité unique pour Assurance/IPM (PDF, UI, et sauvegarde)
   const [blockAssurance, setBlockAssurance] = useState('');
+  const [blockIPM, setBlockIPM] = useState('');
+  
+  // Exclusivité mutuelle dérivée — toujours cohérente, pas de sync manuelle
+  const insuranceDisabled = idEdit === 'voir' || blockIPM !== '';
+  const ipmDisabled = idEdit === 'voir' || blockAssurance !== '';
 
   const account = useAppSelector(state => state.authentication.account);
   const [patientId, setPatientId] = useState(patients);
   const [billElements, setBillElements] = useState<IBillElement[]>([]);
-  // Inside your component
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [description, setDescription] = useState('');
 
-  let getPatient = e => {
+  const getPatient = e => {
     setPatientId(e.target.value);
-    console.log('PatientId', e.target.value);
-    setSelectedPatient(patients.find(p => p.id === Number(e.target.value))); // Store selected patient in state
-    console.log(selectedPatient);
+    setSelectedPatient(patients.find(p => p.id === Number(e.target.value)));
   };
 
-  // const getIPM = e => {
-  //   setBlockIPM(e.target.value);
-  //   // return e.target.value;
-  // };
+  /**
+   * Gestion de l'exclusivité mutuelle Assurance/IPM
+   * Règle métier: Un patient ne peut avoir qu'un seul type de couverture à la fois.
+   * Quand on sélectionne un champ, l'autre est vidé ET désactivé (via dérivation).
+   * Quand on revient à "-- Aucune --", l'autre redevient actif.
+   */
+  const handleAssuranceChange = (value: string) => {
+    setBlockAssurance(value);
+    if (value !== '') {
+      setBlockIPM(''); // Vider IPM quand Assurance est sélectionnée
+    }
+  };
 
+  const handleIPMChange = (value: string) => {
+    setBlockIPM(value);
+    if (value !== '') {
+      setBlockAssurance(''); // Vider Assurance quand IPM est sélectionné
+    }
+  };
+
+  /**
+   * Synchronisation des états locaux avec l'entité chargée
+   * blockAssurance/blockIPM sont la source de vérité unique ;
+   * l'état disabled est dérivé automatiquement.
+   */
   useEffect(() => {
     if (!isNew && billEntity) {
-      // Check if the billEntity is fetched correctly before setting the value
-      console.log('Fetched Bill Entity:', billEntity);
-      setBlockAssurance(billEntity.insurance || ''); // Update the state after the data is fetched
-      setBlockIPM(billEntity.ipm || ''); // Update the state after the data is fetched
+      setBlockAssurance(billEntity.insurance || '');
+      setBlockIPM(billEntity.ipm || '');
+      setDescription(billEntity.desc || '');
+    } else if (isNew) {
+      setBlockAssurance('');
+      setBlockIPM('');
+      setDescription('');
     }
-  }, [billEntity, isNew]); // Only run when billEntity changes
-
-  useEffect(() => {
-    console.log('blockAssurance:', blockAssurance); // Log to track changes
-  }, [blockAssurance]);
-
-  const getAssurance = e => {
-    const value = e.target.value;
-    console.log('Selected Assurance:', value); // Log the selected value
-    setBlockAssurance(value); // Update state when selection changes
-  };
-
-  const getIPM = e => {
-    const value = e.target.value;
-    console.log('Selected IPM:', value); // Log the selected value
-    setBlockIPM(value); // Update state when selection changes
-  };
+  }, [billEntity, isNew]);
 
   const handleClose = () => {
     navigate('/bill' + location.search);
   };
 
+  /**
+   * Chargement initial des données
+   * - En création: réinitialise le state et prépare un élément vide
+   * - En édition: charge la facture et ses éléments depuis l'API
+   */
   useEffect(() => {
     if (isNew) {
       dispatch(reset());
+      setBillElements([{
+        id: undefined,
+        name: null,
+        price: null,
+        percentage: null,
+        quantity: null,
+        bill: null,
+      }]);
     } else {
       dispatch(getEntity(Number(id)));
+      getElemntByBillId(Number(id))
+        .then(data => {
+          if (data && data.length > 0) {
+            setBillElements(data);
+          } else {
+            setBillElements([{
+              id: undefined,
+              name: null,
+              price: null,
+              percentage: null,
+              quantity: null,
+              bill: null,
+            }]);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching elements:', error);
+          setBillElements([{
+            id: undefined,
+            name: null,
+            price: null,
+            percentage: null,
+            quantity: null,
+            bill: null,
+          }]);
+        });
     }
 
-    getElemntByBillId(Number(id))
-      .then(data => {
-        setBillElements(data);
-      })
-      .catch(error => {
-        console.error('Error fetching elements:', error);
-      });
-
-    dispatch(getPatients({ id: account.hospitalId !== null && account.hospitalId !== undefined ? account.hospitalId : 0 }));
-    dispatch(getHospital(account.hospitalId));
+    dispatch(getPatients({}));
+    dispatch(getMyHospital());
   }, [isNew, id, dispatch, idPatient]);
 
+  // Redirection après sauvegarde réussie avec notification
   useEffect(() => {
     if (updateSuccess) {
+      toast.success(isNew ? 'Facturation créée avec succès!' : 'Facturation mise à jour avec succès!');
       handleClose();
     }
   }, [updateSuccess]);
 
+  /**
+   * Soumission du formulaire
+   */
   const saveEntity = values => {
     values.date = convertDateTimeToServer(values.date);
-    // total = tab();
+    
+    // Filtrage des éléments vides avant sauvegarde
+    const validBillElements = billElements.filter(
+      el => el.name && el.name.trim() !== '' && el.price !== null && el.price !== undefined
+    );
 
+    const calculatedTotal = calculateTotal();
+
+    // Assurance/IPM: source de vérité = blockAssurance/blockIPM (état local)
+    // L'exclusivité mutuelle est garantie par les handlers (handleAssuranceChange/handleIPMChange)
     const entity = {
       ...billEntity,
       ...values,
       patient: patients.find(it => it.id.toString() === values.patient.toString()),
-      billElements: billElements,
+      billElements: validBillElements,
       insurance: blockAssurance,
       ipm: blockIPM,
+      total: calculatedTotal,
     };
-
-    console.log(entity);
 
     if (isNew) {
       dispatch(createEntity(entity));
@@ -214,91 +283,118 @@ export const BillUpdate = () => {
     }
   };
 
-  const defaultValues = () =>
-    isNew
-      ? {
-          date: displayDefaultDate(),
-          patient: idPatient,
-          author: account.login,
-        }
-      : {
-          ...billEntity,
-          date: convertDateTimeFromServer(billEntity.date),
-          patient: billEntity?.patient?.id,
-        };
-
-  //info ordonance
-  const [formValues, setFormValues] = useState([{ service: '', amount: '', taux: '', quantity: '' }]);
-
-  let handleChange = (i, e) => {
-    let newFormValues = [...billElements]; // Create a copy of the state array
-    newFormValues[i][e.target.name] = e.target.value; // Update the specific field in the copied array
-    // console.log(newFormValues);
-    setBillElements(newFormValues); // Update the state with the modified array
+  /**
+   * Valeurs par défaut du formulaire
+   */
+  const defaultValues = () => {
+    if (isNew) {
+      return {
+        date: displayDefaultDate(),
+        patient: idPatient,
+        author: account.login,
+        desc: '',
+      };
+    }
+    // insurance/ipm sont gérés via blockAssurance/blockIPM (état local), pas via RHF
+    const { insurance: _ins, ipm: _ipm, ...billEntityWithoutInsIpm } = billEntity || {};
+    return {
+      ...billEntityWithoutInsIpm,
+      date: convertDateTimeFromServer(billEntity?.date),
+      patient: billEntity?.patient?.id,
+      desc: billEntity?.desc || '',
+    };
   };
 
-  let addFormFields = () => {
+  /**
+   * Gestion des modifications d'un élément de facture
+   * 
+   * Utilise une mise à jour immutable pour garantir la détection des changements par React.
+   * Inclut des validations métier: remise entre 0-100%, prix >= 0, quantité >= 1
+   */
+  const handleChange = (i: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    
+    setBillElements(prevElements => {
+      return prevElements.map((element, index) => {
+        if (index === i) {
+          let parsedValue: string | number | null = value;
+          if (name === 'price' || name === 'quantity' || name === 'percentage') {
+            parsedValue = value === '' ? null : Number(value);
+            // Contraintes métier sur les valeurs numériques
+            if (name === 'percentage' && parsedValue !== null) {
+              parsedValue = Math.max(0, Math.min(100, parsedValue));
+            }
+            if (name === 'price' && parsedValue !== null && parsedValue < 0) {
+              parsedValue = 0;
+            }
+            if (name === 'quantity' && parsedValue !== null && parsedValue < 1) {
+              parsedValue = 1;
+            }
+          }
+          return { ...element, [name]: parsedValue };
+        }
+        return element;
+      });
+    });
+  };
+
+  // Ajout d'une nouvelle ligne d'intervention
+  const addFormFields = () => {
     const newBillElement: IBillElement = {
       id: undefined,
-      name: null,
+      name: '',
       price: null,
       percentage: null,
-      quantity: null,
+      quantity: 1,
       bill: null,
     };
-    setBillElements([...billElements, newBillElement]);
+    setBillElements(prev => [...prev, newBillElement]);
   };
 
-  if (billElements.length === 0) {
-    addFormFields();
-  }
-
-  // let addFormFields = () => {
-  //   setFormValues([...formValues, { service: '', amount: '', taux: '', quantity: '' }]);
-  // };
-
-  let removeFormFields = i => {
-    let newFormValues = [...billElements];
-    newFormValues.splice(i, 1);
-    setBillElements(newFormValues);
+  // Suppression d'une ligne d'intervention
+  const removeFormFields = (i: number) => {
+    setBillElements(prev => prev.filter((_, index) => index !== i));
   };
 
-  let nombre = 1;
-  let tarif = 0;
   const [total, setTotal] = useState(0);
-  let remise = 0;
-  let tab = () => {
+  
+  /**
+   * Calcul du montant total de la facture
+   * 
+   * Formule: Σ(prix_unitaire × quantité × (1 - remise/100))
+   * Le résultat est arrondi à l'entier pour éviter les centimes
+   */
+  const calculateTotal = () => {
     let calculatedTotal = 0;
 
-    let newElement = [...billElements];
-
-    for (let i = 0; i < newElement.length; i++) {
-      if (newElement[i].percentage !== null) {
-        remise = 1 - newElement[i].percentage / 100;
-      } else {
-        remise = 1;
-      }
-      if (newElement[i].price !== null) {
-        tarif = newElement[i].price;
-      } else {
-        tarif = 0;
-      }
-      if (newElement[i].quantity === null) {
-        nombre = 1;
-      } else {
-        nombre = newElement[i].quantity;
-      }
-      calculatedTotal += Math.round(tarif * remise * nombre);
+    for (const element of billElements) {
+      const price = typeof element.price === 'number' ? element.price : parseFloat(element.price) || 0;
+      const quantity = typeof element.quantity === 'number' ? element.quantity : parseFloat(element.quantity) || 1;
+      const percentage = typeof element.percentage === 'number' ? element.percentage : parseFloat(element.percentage) || 0;
+      
+      const discount = 1 - (percentage / 100);
+      calculatedTotal += Math.round(price * discount * quantity);
     }
+    
     return calculatedTotal;
   };
 
-  // total = tab();
-  // Recalculate total whenever billElements changes
+  /**
+   * Mise à jour du total affiché selon le mode
+   * - Création: calcul en temps réel pour feedback immédiat
+   * - Édition: affiche "Calculé à la sauvegarde" pour éviter la confusion
+   * - Consultation: affiche le total sauvegardé
+   */
   useEffect(() => {
-    setTotal(tab());
-  }, [billElements]);
+    if (isNew) {
+      const calculatedTotal = calculateTotal();
+      setTotal(calculatedTotal);
+    } else if (billEntity?.total) {
+      setTotal(Number(billEntity.total));
+    }
+  }, [billElements, isNew, billEntity]);
 
+  // Configuration de la police pour le PDF
   Font.register({
     family: 'Poppins',
     fonts: [
@@ -307,37 +403,34 @@ export const BillUpdate = () => {
       { src: 'https://fonts.cdnfonts.com/s/16009/Poppins-Medium.woff', fontWeight: 'thin' },
     ],
   });
+  
   const valuesHeight = 6;
 
+  // Définition du document PDF de la facture
   const doc = (
     <Document>
       <Page style={{ display: 'flex', flexDirection: 'column', fontFamily: 'Poppins' }}>
         <View
           style={{
             display: 'flex',
-            flexDirection: 'row',
-            justifyContent: 'space-around',
+            flexDirection: 'column',
             alignItems: 'center',
-            borderBottom: '1px solid #141414',
-            paddingBottom: '10px',
             marginTop: '20px',
-            marginLeft: '5vw',
-            marginRight: '5vw',
-            width: '90vw',
+            paddingBottom: '10px',
           }}
         >
-          <View style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-around', alignItems: 'center' }}>
-            <Text style={{ fontSize: '10px', marginBottom: '9px', fontWeight: 'bold' }}>{hospital?.name}</Text>
-            <Text style={{ fontSize: '10px', marginBottom: '9px', fontWeight: 'medium' }}>{hospital?.adress}</Text>
-            {/* <Text style={{ fontSize: '10px', fontWeight: 'thin' }}>Email Clinique</Text> */}
-            <Text style={{ fontSize: '10px', fontWeight: 'thin' }}></Text>
-            <Text style={{ fontSize: '10px', fontWeight: 'thin' }}>{hospital?.phone}</Text>
-          </View>
+          <Image
+            style={{ width: '70px', height: '70px' }}
+            src={
+              hospital?.logo && hospital?.logoContentType
+                ? `data:${hospital.logoContentType};base64,${hospital.logo}`
+                : 'content/images/logo-medecin-240x300.png'
+            }
+          />
         </View>
-        <View style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-around', alignItems: 'center', marginTop: '10px' }}>
-          <Text style={{ fontSize: '20px', fontWeight: 'extrabold', marginBottom: '5px' }}>Facture</Text>
-          <Text style={{ fontSize: '12px', marginBottom: '9px', marginLeft: '70vw' }}>
-            {' '}
+        <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '10px' }}>
+          <Text style={{ fontSize: '24px', fontWeight: 'extrabold', marginBottom: '10px' }}>Facture</Text>
+          <Text style={{ fontSize: '12px', marginBottom: '9px', alignSelf: 'flex-end', marginRight: '5vw' }}>
             Dakar, Le {convertDateTimeFromServerToDate(displayDefaultDateTime())}
           </Text>
         </View>
@@ -359,6 +452,14 @@ export const BillUpdate = () => {
                   .join(' ')}{' '}
           </Text>
         </View>
+        
+        {/* Filigrane pour l'authenticité du document */}
+        <Image
+          src="content/images/Ngirwi_Transparent.png"
+          style={{ position: 'absolute', top: '35%', left: '25%', zIndex: '-1', width: '50%', height: 'auto', opacity: 0.08 }}
+        />
+        
+        {/* Tableau des interventions */}
         <View
           style={{
             display: 'flex',
@@ -470,7 +571,6 @@ export const BillUpdate = () => {
                     borderRight: '1px solid #141414',
                     borderTop: '1px solid #141414',
                     fontSize: '14px',
-                    // padding: '10px',
                     textAlign: 'center',
                     overflow: 'hidden',
                     textTransform: 'capitalize',
@@ -520,7 +620,6 @@ export const BillUpdate = () => {
                       (element.quantity === null ? 1 : element.quantity)
                   )}
                   FCFA
-                  {/* {Math.round(tarif*remise*nombre)} */}
                 </Text>
               </View>
             ) : null
@@ -530,10 +629,12 @@ export const BillUpdate = () => {
             <Text style={{ position: 'absolute', right: '0' }}>{total + 'FCFA'} </Text>
           </View>
         </View>
-        {/* Description Section */}
+        
         <View style={{ marginLeft: '5vw', marginTop: '15px' }}>
           <Text style={{ fontSize: '12px', marginBottom: '7px' }}>Description: {description}</Text>
         </View>
+        
+        {/* Pied de page */}
         <View
           style={{
             borderTop: '2px solid #141414',
@@ -628,13 +729,8 @@ export const BillUpdate = () => {
             </span>
             <div style={{ display: 'flex', flexDirection: 'row', gap: '3vh' }}>
               <PDFDownloadLink
-                style={{ backgroundColor: 'transparent', textDecoration: 'none' }}
+                style={{ textDecoration: 'none' }}
                 document={doc}
-                // fileName={`facture_${account.login}_${JSON.stringify(
-                //   convertDateTimeFromServerToDate(displayDefaultDateTime()) +
-                //     'H:' +
-                //     convertDateTimeFromServerToHours(displayDefaultDateTime())
-                // )}`}
                 fileName={`facture_${JSON.stringify(
                   convertDateTimeFromServerToDate(displayDefaultDateTime()) +
                     'H:' +
@@ -644,16 +740,22 @@ export const BillUpdate = () => {
                 <div
                   style={{
                     cursor: 'pointer',
-                    fontWeight: '900',
-                    color: '#B3C0D3',
+                    fontWeight: '600',
+                    color: '#ffffff',
                     textAlign: 'center',
                     display: 'flex',
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: '3px',
+                    gap: '8px',
+                    backgroundColor: '#56B5C5',
+                    padding: '10px 20px',
+                    borderRadius: '25px',
+                    boxShadow: '0 4px 15px rgba(86, 181, 197, 0.3)',
+                    transition: 'all 0.3s ease',
+                    fontSize: '14px',
                   }}
                 >
-                  {React.createElement(BiDownload, { size: '23' })} <span>Télécharger</span>
+                  {React.createElement(BiDownload, { size: '20' })} <span>Télécharger PDF</span>
                 </div>
               </PDFDownloadLink>
             </div>
@@ -687,281 +789,274 @@ export const BillUpdate = () => {
               data-cy="date"
               type="datetime-local"
               placeholder="YYYY-MM-DD HH:mm"
-            >
-              <i className="fa-light fa-lock" style={{ position: 'absolute', zIndex: '0', color: 'white', right: '0' }}>
-                {' '}
-              </i>
-            </ValidatedField>
+            />
             <ValidatedField hidden label="Author" id="bill-author" name="author" data-cy="author" type="text" />
-            <ValidatedField
-              onChange={e => getPatient(e)}
-              style={
-                isNew
-                  ? { borderRadius: '25px', borderColor: '#CBDCF7', width: '28vw' }
-                  : { borderRadius: '25px', backgroundColor: '#A9B7CD', borderColor: '#CBDCF7', color: '#F6FAFF', width: '28vw' }
-              }
-              disabled={isNew ? false : true}
-              id="bill-patient"
-              name="patient"
-              data-cy="patient"
-              label="Patient"
-              type="select"
-            >
-              <option value="" key="0" />
-              {patients
-                ? patients.map(otherEntity => (
-                    <option value={otherEntity.id} key={otherEntity.id}>
-                      {otherEntity.lastName.toUpperCase()}{' '}
-                      {otherEntity.firstName
-                        .split(' ')
-                        .map(a => a.charAt(0).toUpperCase() + a.slice(1))
-                        .join(' ')}
+            
+            {/* Ligne Patient + Assurance + IPM - Disposition horizontale pour une meilleure ergonomie */}
+            <div style={{ display: 'flex', flex: '1 1 100%', gap: '25px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <ValidatedField
+                onChange={e => getPatient(e)}
+                style={
+                  isNew
+                    ? { borderRadius: '25px', borderColor: '#CBDCF7', width: '24vw' }
+                    : { borderRadius: '25px', backgroundColor: '#A9B7CD', borderColor: '#CBDCF7', color: '#F6FAFF', width: '24vw' }
+                }
+                disabled={isNew ? false : true}
+                id="bill-patient"
+                name="patient"
+                data-cy="patient"
+                label="Patient"
+                type="select"
+              >
+                <option value="" key="0" />
+                {patients
+                  ? patients.map(otherEntity => (
+                      <option value={otherEntity.id} key={otherEntity.id}>
+                        {otherEntity.lastName.toUpperCase()}{' '}
+                        {otherEntity.firstName
+                          .split(' ')
+                          .map(a => a.charAt(0).toUpperCase() + a.slice(1))
+                          .join(' ')}
+                      </option>
+                    ))
+                  : null}
+              </ValidatedField>
+              
+              {/* Sélecteur Assurance - Mutuellement exclusif avec IPM */}
+              <FormGroup style={{ width: '18vw' }}>
+                <Label id="insuranceLabel" for="bill-assurance">
+                  {insuranceDisabled ? "Assurance (IPM sélectionné)" : "Assurance"}
+                </Label>
+                <select
+                  id="bill-assurance"
+                  data-cy="assurance"
+                  className="form-control"
+                  value={blockAssurance}
+                  disabled={insuranceDisabled}
+                  onChange={e => handleAssuranceChange(e.target.value)}
+                  style={{
+                    borderRadius: '25px',
+                    borderColor: insuranceDisabled ? '#ffc107' : '#CBDCF7',
+                    backgroundColor: insuranceDisabled ? '#A9B7CD' : 'white',
+                    color: insuranceDisabled ? '#F6FAFF' : 'inherit',
+                  }}
+                >
+                  <option value="">-- Aucune --</option>
+                  {assurance.map(assur => (
+                    <option value={assur.label} key={assur.id}>
+                      {assur.label}
                     </option>
-                  ))
-                : null}
-            </ValidatedField>
-            <ValidatedField
-              value={blockAssurance} // Bind the value to the state
-              style={
-                isNew
-                  ? {
-                      borderRadius: '25px',
-                      borderColor: '#CBDCF7',
-                      width: '20vw',
-                    }
-                  : {
-                      borderRadius: '25px',
-                      borderColor: '#CBDCF7',
-                      width: '20vw',
-                      backgroundColor: idEdit === 'voir' ? '#A9B7CD' : '',
-                      color: idEdit === 'voir' ? '#F6FAFF' : '',
-                    }
-              }
-              disabled={
-                isNew && blockIPM === '' ? false : isNew && blockIPM !== '' ? true : idEdit !== 'voir' && blockIPM === '' ? false : true
-              }
-              id="bill-asurance"
-              name="insurance"
-              data-cy="asurance"
-              label="Assurance"
-              type="select"
-              onChange={getAssurance} // Update state when selection changes
-            >
-              {assurance.map(assur => (
-                <option value={assur.label} key={assur.id}>
-                  {assur.label}
-                </option>
-              ))}
-            </ValidatedField>
-            <ValidatedField
-              value={blockIPM} // Bind the value to the state
-              style={
-                isNew
-                  ? { borderRadius: '25px', borderColor: '#CBDCF7', width: '20vw' }
-                  : {
-                      borderRadius: '25px',
-                      borderColor: '#CBDCF7',
-                      width: '20vw',
-                      backgroundColor: idEdit === 'voir' ? '#A9B7CD' : '',
-                      color: idEdit === 'voir' ? '#F6FAFF' : '',
-                    }
-              }
-              id="bill-ipm"
-              name="ipm"
-              data-cy="ipm"
-              label="IPM"
-              type="select"
-              disabled={
-                isNew && blockAssurance === ''
-                  ? false
-                  : isNew && blockAssurance !== ''
-                  ? true
-                  : idEdit !== 'voir' && blockAssurance === ''
-                  ? false
-                  : true
-              }
-              onChange={getIPM}
-            >
-              {ipm.map(a => (
-                <option value={a.label} key={a.id}>
-                  {a.label}
-                </option>
-              ))}
-            </ValidatedField>
-            {/* <Button
-              onClick={() => resetBlock()}
-              style={{
-                width: "4vw",
-                color: "red",
-                backgroundColor: "transparent",
-                borderColor: "transparent"
-              }}
-            >
-              {React.createElement(AiFillCloseCircle, { size: "25" })}
-            </Button> */}
+                  ))}
+                </select>
+              </FormGroup>
+              
+              {/* Sélecteur IPM - Mutuellement exclusif avec Assurance */}
+              <FormGroup style={{ width: '18vw' }}>
+                <Label id="ipmLabel" for="bill-ipm">
+                  {ipmDisabled ? "IPM (Assurance sélectionnée)" : "IPM"}
+                </Label>
+                <select
+                  id="bill-ipm"
+                  data-cy="ipm"
+                  className="form-control"
+                  value={blockIPM}
+                  disabled={ipmDisabled}
+                  onChange={e => handleIPMChange(e.target.value)}
+                  style={{
+                    borderRadius: '25px',
+                    borderColor: ipmDisabled ? '#ffc107' : '#CBDCF7',
+                    backgroundColor: ipmDisabled ? '#A9B7CD' : 'white',
+                    color: ipmDisabled ? '#F6FAFF' : 'inherit',
+                  }}
+                >
+                  <option value="">-- Aucune --</option>
+                  {ipm.map(a => (
+                    <option value={a.label} key={a.id}>
+                      {a.label}
+                    </option>
+                  ))}
+                </select>
+              </FormGroup>
+            </div>
+            
+            {/* Liste dynamique des éléments de facturation */}
             {billElements.map((element, index, arr) => (
               <div
                 style={{
                   flex: '1 1 100%',
                   display: 'flex',
                   flexWrap: 'wrap',
-                  gap: '0.7vw',
-                  alignItems: 'center',
+                  gap: '15px',
+                  alignItems: 'flex-end',
                   justifyContent: 'center',
+                  marginBottom: '15px',
+                  padding: '10px',
+                  backgroundColor: '#f8fafc',
+                  borderRadius: '10px',
                 }}
-                key={index}
+                key={`bill-element-${index}`}
               >
                 <ValidatedField
-                  type="number"
                   label="Quantité"
                   name="quantity"
+                  type="number"
                   min="1"
-                  value={element.quantity || ''}
+                  value={element.quantity !== null && element.quantity !== undefined ? element.quantity : ''}
                   onChange={e => handleChange(index, e)}
-                  required
+                  disabled={idEdit === 'voir'}
                   style={{
-                    borderRadius: '25px',
+                    borderRadius: '12px',
                     borderColor: '#CBDCF7',
-                    width: '6vw',
-                    backgroundColor: idEdit === 'voir' ? '#A9B7CD' : '',
-                    color: idEdit === 'voir' ? '#F6FAFF' : '',
+                    width: '100px',
+                    backgroundColor: idEdit === 'voir' ? '#A9B7CD' : 'white',
+                    color: idEdit === 'voir' ? '#F6FAFF' : '#333',
+                  }}
+                  validate={{
+                    min: { value: 1, message: 'Minimum 1' },
                   }}
                 />
                 <ValidatedField
-                  disabled={idEdit === 'voir' ? true : false}
-                  style={{
-                    borderRadius: '25px',
-                    borderColor: '#CBDCF7',
-                    width: '21vw',
-                    backgroundColor: idEdit === 'voir' ? '#A9B7CD' : '',
-                    color: idEdit === 'voir' ? '#F6FAFF' : '',
-                  }}
-                  type="text"
                   label="Intervention"
-                  placeholder="Intervention..."
                   name="name"
+                  type="text"
+                  placeholder="Intervention..."
                   value={element.name || ''}
                   onChange={e => handleChange(index, e)}
-                  validate={{
-                    required: { value: false, message: 'Ce champ est obligatoire.' },
+                  disabled={idEdit === 'voir'}
+                  style={{
+                    borderRadius: '12px',
+                    borderColor: '#CBDCF7',
+                    minWidth: '200px',
+                    flex: '1',
+                    backgroundColor: idEdit === 'voir' ? '#A9B7CD' : 'white',
+                    color: idEdit === 'voir' ? '#F6FAFF' : '#333',
                   }}
                 />
                 <ValidatedField
-                  disabled={idEdit === 'voir' ? true : false}
-                  style={{
-                    borderRadius: '25px',
-                    borderColor: '#CBDCF7',
-                    width: '20vw',
-                    backgroundColor: idEdit === 'voir' ? '#A9B7CD' : '',
-                    color: idEdit === 'voir' ? '#F6FAFF' : '',
-                  }}
-                  type="number"
-                  label="Tarif unitaire(FCFA)"
-                  placeholder="Tarif..."
+                  label="Prix unitaire (FCFA)"
                   name="price"
-                  value={element.price || ''}
+                  type="number"
+                  placeholder="Prix unitaire..."
+                  min="0"
+                  value={element.price !== null && element.price !== undefined ? element.price : ''}
                   onChange={e => handleChange(index, e)}
+                  disabled={idEdit === 'voir'}
+                  style={{
+                    borderRadius: '12px',
+                    borderColor: '#CBDCF7',
+                    width: '150px',
+                    backgroundColor: idEdit === 'voir' ? '#A9B7CD' : 'white',
+                    color: idEdit === 'voir' ? '#F6FAFF' : '#333',
+                  }}
                   validate={{
-                    required: { value: false, message: 'Ce champ est obligatoire.' },
-                    validate: v => isNumber(v) || 'Ce champ doit être un nombre.',
+                    min: { value: 0, message: 'Minimum 0' },
                   }}
                 />
                 <ValidatedField
-                  disabled={idEdit === 'voir' ? true : false}
-                  style={{
-                    borderRadius: '25px',
-                    borderColor: '#CBDCF7',
-                    width: '20vw',
-                    backgroundColor: idEdit === 'voir' ? '#A9B7CD' : '',
-                    color: idEdit === 'voir' ? '#F6FAFF' : '',
-                  }}
-                  label="Taux de remboursement(en %)"
-                  type="number"
+                  label="Remise (%)"
                   name="percentage"
-                  placeholder="Taux..."
-                  value={element.percentage || ''}
+                  type="number"
+                  placeholder="0"
+                  min="0"
+                  max="100"
+                  value={element.percentage !== null && element.percentage !== undefined ? element.percentage : ''}
                   onChange={e => handleChange(index, e)}
+                  disabled={idEdit === 'voir'}
+                  style={{
+                    borderRadius: '12px',
+                    borderColor: '#CBDCF7',
+                    width: '100px',
+                    backgroundColor: idEdit === 'voir' ? '#A9B7CD' : 'white',
+                    color: idEdit === 'voir' ? '#F6FAFF' : '#333',
+                  }}
+                  validate={{
+                    min: { value: 0, message: 'Minimum 0%' },
+                    max: { value: 100, message: 'Maximum 100%' },
+                  }}
                 />
-                {arr.length - 1 === index ? (
-                  <span
-                    hidden={idEdit === 'voir' ? true : false}
-                    onClick={idEdit !== 'voir' ? () => addFormFields() : null}
-                    style={{
-                      backgroundColor: 'transparent',
-                      borderColor: 'transparent',
-                      color: '#11485C',
-                      borderRadius: '50%',
-                      fontWeight: '900',
-                      width: '1vw',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {React.createElement(IoIosAddCircle, { size: '25' })}
-                  </span>
-                ) : (
-                  <span style={{ width: '1vw', color: 'transparent' }}>{React.createElement(IoIosAddCircleOutline, { size: '25' })}</span>
-                )}
-
-                {index ? (
-                  <span
-                    hidden={idEdit === 'voir' ? true : false}
-                    onClick={idEdit !== 'voir' ? () => removeFormFields(index) : null}
-                    style={{
-                      backgroundColor: 'transparent',
-                      cursor: 'pointer',
-                      borderColor: 'transparent',
-                      color: '#EC4747',
-                      fontWeight: '900',
-                      width: '0.1vw',
-                      display: 'inline',
-                    }}
-                  >
-                    {React.createElement(IoIosRemoveCircle, { size: '25' })}
-                  </span>
-                ) : null}
+                {/* Boutons d'ajout/suppression - Affichés uniquement en mode édition */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '5px' }}>
+                  {arr.length - 1 === index && idEdit !== 'voir' && (
+                    <span
+                      onClick={() => addFormFields()}
+                      style={{
+                        backgroundColor: '#11485C',
+                        color: 'white',
+                        borderRadius: '50%',
+                        width: '35px',
+                        height: '35px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {React.createElement(IoIosAddCircle, { size: '30' })}
+                    </span>
+                  )}
+                  {index > 0 && idEdit !== 'voir' && (
+                    <span
+                      onClick={() => removeFormFields(index)}
+                      style={{
+                        backgroundColor: '#EC4747',
+                        color: 'white',
+                        borderRadius: '50%',
+                        width: '35px',
+                        height: '35px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {React.createElement(IoIosRemoveCircle, { size: '30' })}
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
+            
+            {/* Affichage du total - Comportement différent selon le mode */}
+            <div style={{ width: '36vw' }}>
+              <label className="form-label" htmlFor="bill-total-display">Montant Total (CFA)</label>
+              <div
+                id="bill-total-display"
+                style={{
+                  borderRadius: '25px',
+                  border: '1px solid #CBDCF7',
+                  padding: '0.375rem 0.75rem',
+                  backgroundColor: '#A9B7CD',
+                  color: '#F6FAFF',
+                  height: '38px',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                {isNew 
+                  ? total + ' FCFA' 
+                  : idEdit === 'voir' 
+                    ? (billEntity?.total || 0) + ' FCFA'
+                    : 'Calculé à la sauvegarde'}
+              </div>
+            </div>
+            {/* Description */}
             <ValidatedField
-              value={isNaN(total) ? 'Calcul en cours...' : total}
-              style={
-                isNew
-                  ? { borderRadius: '25px', borderColor: '#CBDCF7', width: '36vw' }
-                  : {
-                      borderRadius: '25px',
-                      borderColor: '#CBDCF7',
-                      width: '36vw',
-                      backgroundColor: idEdit === 'voir' ? '#A9B7CD' : '',
-                      color: idEdit === 'voir' ? '#F6FAFF' : '',
-                    }
-              }
-              disabled
-              id="bill-total"
-              name="total"
-              data-cy="total"
-              label="Montant Total(CFA)"
-              placeholder="Montant..."
-              type="number"
-            />
-            <ValidatedField
-              style={
-                isNew
-                  ? { borderRadius: '25px', borderColor: '#CBDCF7', width: '36vw', height: '20vh' }
-                  : {
-                      borderRadius: '25px',
-                      borderColor: '#CBDCF7',
-                      width: '36vw',
-                      height: '20vh',
-                      backgroundColor: idEdit === 'voir' ? '#A9B7CD' : '',
-                      color: idEdit === 'voir' ? '#F6FAFF' : '',
-                    }
-              }
-              disabled={isNew || idEdit !== 'voir' ? false : idEdit === 'voir' ? false : true}
+              label="Description"
               id="bill-desc"
               name="desc"
-              label="Description"
-              placeholder="Description..."
+              data-cy="desc"
               type="textarea"
+              placeholder="Description..."
+              disabled={idEdit === 'voir'}
               onChange={e => setDescription(e.target.value)}
+              style={{
+                borderRadius: '25px',
+                borderColor: '#CBDCF7',
+                height: '20vh',
+                backgroundColor: idEdit === 'voir' ? '#A9B7CD' : '',
+                color: idEdit === 'voir' ? '#F6FAFF' : '',
+                width: '36vw',
+              }}
             />
 
             <Button

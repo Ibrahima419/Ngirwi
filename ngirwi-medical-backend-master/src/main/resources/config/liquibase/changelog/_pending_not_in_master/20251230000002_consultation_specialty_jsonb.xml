@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 
+        Move echocardiography-specific fields from individual columns to a JSON column.
+        This keeps the Consultation table generic for all specialties while allowing
+        cardiology-specific data to be stored flexibly.
+        
+        KEPT as standard columns (universal vitals and clinical data):
+        - temperature, weight, tension, glycemie, frequence_respiratoire, frequence_cardiaque
+        - hypothesis, exams, treatment, exam_general, commentaire_libre, resultats_paraclinique
+        - date_time, author, patient_id, comment
+        
+        MOVED to specialty_exam_data JSON (echocardiography-specific):
+        - og, vd, eseptum, ao, v_g_diastole, ouverture_ao, v_g_systole, vp, o_g_ao,
+        - f_r_teicholtz, e_vp, septum_vg, f_e_teicholz, tapse, paroi_post,
+        - surface_og, surface_od, mesure_vd, fe, fe_a_2_c, fe_biplan,
+        - e, a, e_a, td, triv, duree_am_im, surface_regurgitee, pba, qr, vr, sor, fr,
+        - vmax_ap, itv, grad_max, grad_moy, dc, i_aoextension, vena_contracta, pht,
+        - i_t_extension, grad_max_b, paps, ip, vmax, grad_max_c, grad_moy_b,
+        - s, d, s_d, a_a, duree_ap, e_aa, a_aa, e_a_aa, e_ea, z
+    -->
+
+    <!-- Add column for PostgreSQL (production) -->
+    <changeSet id="20251230000002-1-pg" author="system" dbms="postgresql">
+        <comment>Add specialty_exam_data JSONB column to consultation table (PostgreSQL)</comment>
+        <addColumn tableName="consultation">
+            <column name="specialty_exam_data" type="jsonb">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- Add column for H2 (development) -->
+    <changeSet id="20251230000002-1-h2" author="system" dbms="h2">
+        <comment>Add specialty_exam_data CLOB column to consultation table (H2 dev)</comment>
+        <addColumn tableName="consultation">
+            <column name="specialty_exam_data" type="clob">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="20251230000002-2" author="system" dbms="postgresql">
+        <comment>Migrate existing echocardiography data to JSONB column (PostgreSQL)</comment>
+        <sql>
+            UPDATE consultation 
+            SET specialty_exam_data = jsonb_strip_nulls(
+                jsonb_build_object(
+                    'og', og,
+                    'vd', vd,
+                    'eseptum', eseptum,
+                    'ao', ao,
+                    'vGDiastole', v_g_diastole,
+                    'ouvertureAo', ouverture_ao,
+                    'vGSystole', v_g_systole,
+                    'vp', vp,
+                    'oGAo', o_g_ao,
+                    'fRTeicholtz', f_r_teicholtz,
+                    'eVp', e_vp,
+                    'septumVg', septum_vg,
+                    'fETeicholz', f_e_teicholz,
+                    'tapse', tapse,
+                    'paroiPost', paroi_post,
+                    'surfaceOg', surface_og,
+                    'surfaceOd', surface_od,
+                    'mesureVd', mesure_vd,
+                    'fe', fe,
+                    'feA2C', fe_a_2_c,
+                    'feBiplan', fe_biplan,
+                    'e', e,
+                    'a', a,
+                    'eA', e_a,
+                    'td', td,
+                    'triv', triv,
+                    'dureeAmIm', duree_am_im
+                ) || jsonb_build_object(
+                    'surfaceRegurgitee', surface_regurgitee,
+                    'pba', pba,
+                    'qr', qr,
+                    'vr', vr,
+                    'sor', sor,
+                    'fr', fr,
+                    'vmaxAp', vmax_ap,
+                    'itv', itv,
+                    'gradMax', grad_max,
+                    'gradMoy', grad_moy,
+                    'dc', dc,
+                    'iAoextension', i_aoextension,
+                    'venaContracta', vena_contracta,
+                    'pht', pht,
+                    'iTExtension', i_t_extension,
+                    'gradMaxB', grad_max_b,
+                    'paps', paps,
+                    'ip', ip,
+                    'vmax', vmax,
+                    'gradMaxC', grad_max_c,
+                    'gradMoyB', grad_moy_b,
+                    's', s,
+                    'd', d,
+                    'sD', s_d,
+                    'aA', a_a,
+                    'dureeAp', duree_ap,
+                    'eAA', e_aa,
+                    'aAA', a_aa,
+                    'eAAa', e_a_aa,
+                    'eEa', e_ea,
+                    'z', z
+                )
+            )
+            WHERE og IS NOT NULL 
+               OR vd IS NOT NULL 
+               OR eseptum IS NOT NULL 
+               OR ao IS NOT NULL
+               OR fe IS NOT NULL
+               OR tapse IS NOT NULL
+               OR paps IS NOT NULL;
+        </sql>
+    </changeSet>
+
+    <changeSet id="20251230000002-3" author="system" dbms="h2">
+        <comment>Migrate existing echocardiography data to JSON column (H2 - dev only)</comment>
+        <sql>
+            UPDATE consultation 
+            SET specialty_exam_data = CONCAT(
+                '{"og":"', COALESCE(og,''), 
+                '","vd":"', COALESCE(vd,''),
+                '","eseptum":"', COALESCE(eseptum,''),
+                '","ao":"', COALESCE(ao,''),
+                '","fe":"', COALESCE(fe,''),
+                '","tapse":"', COALESCE(tapse,''),
+                '","paps":"', COALESCE(paps,''),
+                '"}'
+            )
+            WHERE og IS NOT NULL 
+               OR vd IS NOT NULL 
+               OR eseptum IS NOT NULL;
+        </sql>
+    </changeSet>
+
+    <changeSet id="20251230000002-4" author="system">
+        <comment>Drop old echocardiography columns from consultation table</comment>
+        <dropColumn tableName="consultation" columnName="og"/>
+        <dropColumn tableName="consultation" columnName="vd"/>
+        <dropColumn tableName="consultation" columnName="eseptum"/>
+        <dropColumn tableName="consultation" columnName="ao"/>
+        <dropColumn tableName="consultation" columnName="v_g_diastole"/>
+        <dropColumn tableName="consultation" columnName="ouverture_ao"/>
+        <dropColumn tableName="consultation" columnName="v_g_systole"/>
+        <dropColumn tableName="consultation" columnName="vp"/>
+        <dropColumn tableName="consultation" columnName="o_g_ao"/>
+        <dropColumn tableName="consultation" columnName="f_r_teicholtz"/>
+        <dropColumn tableName="consultation" columnName="e_vp"/>
+        <dropColumn tableName="consultation" columnName="septum_vg"/>
+        <dropColumn tableName="consultation" columnName="f_e_teicholz"/>
+        <dropColumn tableName="consultation" columnName="tapse"/>
+        <dropColumn tableName="consultation" columnName="paroi_post"/>
+        <dropColumn tableName="consultation" columnName="surface_og"/>
+        <dropColumn tableName="consultation" columnName="surface_od"/>
+        <dropColumn tableName="consultation" columnName="mesure_vd"/>
+        <dropColumn tableName="consultation" columnName="fe"/>
+        <dropColumn tableName="consultation" columnName="fe_a_2_c"/>
+        <dropColumn tableName="consultation" columnName="fe_biplan"/>
+        <dropColumn tableName="consultation" columnName="e"/>
+        <dropColumn tableName="consultation" columnName="a"/>
+        <dropColumn tableName="consultation" columnName="e_a"/>
+        <dropColumn tableName="consultation" columnName="td"/>
+        <dropColumn tableName="consultation" columnName="triv"/>
+        <dropColumn tableName="consultation" columnName="duree_am_im"/>
+        <dropColumn tableName="consultation" columnName="surface_regurgitee"/>
+        <dropColumn tableName="consultation" columnName="pba"/>
+        <dropColumn tableName="consultation" columnName="qr"/>
+        <dropColumn tableName="consultation" columnName="vr"/>
+        <dropColumn tableName="consultation" columnName="sor"/>
+        <dropColumn tableName="consultation" columnName="fr"/>
+        <dropColumn tableName="consultation" columnName="vmax_ap"/>
+        <dropColumn tableName="consultation" columnName="itv"/>
+        <dropColumn tableName="consultation" columnName="grad_max"/>
+        <dropColumn tableName="consultation" columnName="grad_moy"/>
+        <dropColumn tableName="consultation" columnName="dc"/>
+        <dropColumn tableName="consultation" columnName="i_aoextension"/>
+        <dropColumn tableName="consultation" columnName="vena_contracta"/>
+        <dropColumn tableName="consultation" columnName="pht"/>
+        <dropColumn tableName="consultation" columnName="i_t_extension"/>
+        <dropColumn tableName="consultation" columnName="grad_max_b"/>
+        <dropColumn tableName="consultation" columnName="paps"/>
+        <dropColumn tableName="consultation" columnName="ip"/>
+        <dropColumn tableName="consultation" columnName="vmax"/>
+        <dropColumn tableName="consultation" columnName="grad_max_c"/>
+        <dropColumn tableName="consultation" columnName="grad_moy_b"/>
+        <dropColumn tableName="consultation" columnName="s"/>
+        <dropColumn tableName="consultation" columnName="d"/>
+        <dropColumn tableName="consultation" columnName="s_d"/>
+        <dropColumn tableName="consultation" columnName="a_a"/>
+        <dropColumn tableName="consultation" columnName="duree_ap"/>
+        <dropColumn tableName="consultation" columnName="e_aa"/>
+        <dropColumn tableName="consultation" columnName="a_aa"/>
+        <dropColumn tableName="consultation" columnName="e_a_aa"/>
+        <dropColumn tableName="consultation" columnName="e_ea"/>
+        <dropColumn tableName="consultation" columnName="z"/>
+    </changeSet>
+
+</databaseChangeLog>
