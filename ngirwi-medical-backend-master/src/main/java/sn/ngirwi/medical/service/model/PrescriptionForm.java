@@ -2,9 +2,18 @@ package sn.ngirwi.medical.service.model;
 
 public class PrescriptionForm {
 
+    private Long id;
     private String name;
     private String frequency;
     private String duration;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
 
     public String getName() {
         return name;
