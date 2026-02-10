@@ -71,17 +71,24 @@ public class PatientService {
     /**
      * Update a patient.
      *
+     * Loads the existing entity first to preserve hospitalId, which is not
+     * present in PatientDTO (set server-side on creation, must survive updates).
+     *
      * @param patientDTO the entity to save.
      * @return the persisted entity.
      */
     public PatientDTO update(PatientDTO patientDTO) {
         log.debug("Request to update Patient : {}", patientDTO);
-        if (patientDTO.getId() != null) {
-            patientRepository
-                .findById(patientDTO.getId())
-                .ifPresent(existing -> assertSameHospital(existing.getHospitalId()));
+        if (patientDTO.getId() == null) {
+            throw new IllegalArgumentException("Patient ID cannot be null for update");
         }
+        Patient existing = patientRepository
+            .findById(patientDTO.getId())
+            .orElseThrow(() -> new IllegalArgumentException("Patient not found id=" + patientDTO.getId()));
+        assertSameHospital(existing.getHospitalId());
+
         Patient patient = patientMapper.toEntity(patientDTO);
+        patient.setHospitalId(existing.getHospitalId());
         patient = patientRepository.save(patient);
         return patientMapper.toDto(patient);
     }

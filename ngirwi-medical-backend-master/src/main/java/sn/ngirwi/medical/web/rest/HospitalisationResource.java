@@ -20,8 +20,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import sn.ngirwi.medical.domain.enumeration.HospitalisationStatus;
+import org.springframework.http.MediaType;
+import org.springframework.transaction.annotation.Transactional;
+import sn.ngirwi.medical.domain.Hospital;
+import sn.ngirwi.medical.domain.Hospitalisation;
+import sn.ngirwi.medical.repository.HospitalRepository;
 import sn.ngirwi.medical.repository.HospitalisationRepository;
 import sn.ngirwi.medical.service.HospitalisationService;
+import sn.ngirwi.medical.service.PdfGenerator;
 import sn.ngirwi.medical.service.dto.HospitalisationDTO;
 import sn.ngirwi.medical.service.dto.HospitalisationResumeDTO;
 import sn.ngirwi.medical.web.rest.errors.BadRequestAlertException;
@@ -45,10 +51,15 @@ public class HospitalisationResource {
 
     private final HospitalisationService hospitalisationService;
     private final HospitalisationRepository hospitalisationRepository;
+    private final HospitalRepository hospitalRepository;
 
-    public HospitalisationResource(HospitalisationService hospitalisationService, HospitalisationRepository hospitalisationRepository) {
+    public HospitalisationResource(
+            HospitalisationService hospitalisationService,
+            HospitalisationRepository hospitalisationRepository,
+            HospitalRepository hospitalRepository) {
         this.hospitalisationService = hospitalisationService;
         this.hospitalisationRepository = hospitalisationRepository;
+        this.hospitalRepository = hospitalRepository;
     }
 
     /**
@@ -300,5 +311,42 @@ public class HospitalisationResource {
         log.debug("REST request to finalize billing for Hospitalisation : {}", id);
         HospitalisationResumeDTO dto = hospitalisationService.finalizeBilling(id);
         return ResponseEntity.ok(dto);
+    }
+
+    /**
+     * GET /hospitalisations/{id}/resume.pdf : exporte le résumé d'hospitalisation au format PDF.
+     *
+     * Ported from production JAR. @Transactional ensures LAZY collections
+     * (surveillanceSheets, medications, acts) are accessible during PDF generation.
+     */
+    @GetMapping("/hospitalisations/{id}/resume.pdf")
+    @Transactional(readOnly = true)
+    public ResponseEntity<byte[]> exportHospitalisationPdf(@PathVariable Long id) {
+        log.debug("REST request to export PDF for Hospitalisation : {}", id);
+        Hospitalisation h = hospitalisationRepository.findById(id)
+            .orElseThrow(() -> new BadRequestAlertException("Hospitalisation non trouvée", ENTITY_NAME, "idnotfound"));
+
+        // Load hospital from patient's hospitalId (for logo/header)
+        Hospital hospital = null;
+        if (h.getPatient() != null && h.getPatient().getHospitalId() != null) {
+            hospital = hospitalRepository.findById(h.getPatient().getHospitalId()).orElse(null);
+        }
+
+        HospitalisationResumeDTO resume = hospitalisationService.calculateResume(id);
+
+        try {
+            byte[] pdf = PdfGenerator.generate(h, hospital, resume);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", "hospitalisation_" + id + ".pdf");
+            headers.setContentLength(pdf.length);
+
+            return new ResponseEntity<>(pdf, headers, org.springframework.http.HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for hospitalisation {}: {}", id, e.getMessage(), e);
+            throw new BadRequestAlertException(
+                "Erreur lors de la génération du PDF: " + e.getMessage(), ENTITY_NAME, "pdferror");
+        }
     }
 }

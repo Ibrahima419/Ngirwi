@@ -60,6 +60,7 @@ public class Patient implements Serializable {
     private String phone;
 
     @NotNull
+    @Pattern(regexp = "^[0-9]{13}$", message = "Le NIN doit être exactement 13 chiffres")
     @Column(name = "cni", nullable = false, unique = true)
     private String cni;
 
