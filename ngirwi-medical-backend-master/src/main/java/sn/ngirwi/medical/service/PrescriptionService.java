@@ -264,13 +264,22 @@ public class PrescriptionService {
             throw new IllegalArgumentException("Prescription ID cannot be null for update");
         }
         
-        // Get existing medicines from DB
+        // 1. Load existing prescription from DB (attached to Hibernate session)
+        Prescription prescription = prescriptionRepository.findById(prescriptionDTO.getId())
+            .orElseThrow(() -> new IllegalArgumentException("Prescription not found id=" + prescriptionDTO.getId()));
+        
+        // 2. Update scalar fields only (medecines managed separately below)
+        prescription.setAuthor(prescriptionDTO.getAuthor());
+        prescription.setCreationDate(prescriptionDTO.getCreationDate());
+        prescription = prescriptionRepository.save(prescription);
+        
+        // 3. Get existing medicines from DB
         List<Medecine> existingMedecines = medecineRepository.findByOrdonance_Id(prescriptionDTO.getId());
         
-        // Map medicines from DTO (includes IDs for existing ones)
+        // 4. Map submitted medicines from DTO (preserves IDs for existing ones)
         Set<Medecine> submittedMedecines = medecineMapper(prescriptionDTO);
         
-        // Collect IDs of submitted medicines (for deletion check)
+        // 5. Collect IDs of submitted medicines (for deletion check)
         Set<Long> submittedIds = new HashSet<>();
         for (Medecine m : submittedMedecines) {
             if (m.getId() != null) {
@@ -278,11 +287,7 @@ public class PrescriptionService {
             }
         }
         
-        // Save the prescription first
-        Prescription prescription = prescriptionMapper.toEntity(prescriptionDTO);
-        prescription = prescriptionRepository.save(prescription);
-        
-        // Smart update: DELETE medicines that were removed by user
+        // 6. DELETE medicines that were removed by user
         for (Medecine existing : existingMedecines) {
             if (!submittedIds.contains(existing.getId())) {
                 log.debug("Deleting removed medicine: {}", existing.getId());
@@ -290,14 +295,12 @@ public class PrescriptionService {
             }
         }
         
-        // Smart update: UPDATE existing or CREATE new medicines
+        // 7. UPDATE existing or CREATE new medicines
         for (Medecine medecine : submittedMedecines) {
             medecine.setOrdonance(prescription);
             if (medecine.getId() != null) {
-                // UPDATE existing medicine
                 log.debug("Updating existing medicine: {}", medecine.getId());
             } else {
-                // CREATE new medicine
                 log.debug("Creating new medicine: {}", medecine.getName());
             }
             medecineRepository.save(medecine);

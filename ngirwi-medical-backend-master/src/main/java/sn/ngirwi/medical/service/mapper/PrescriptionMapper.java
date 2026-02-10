@@ -14,8 +14,18 @@ public interface PrescriptionMapper extends EntityMapper<PrescriptionDTO, Prescr
     @Mapping(target = "consultation", source = "consultation", qualifiedByName = "consultationId")
     PrescriptionDTO toDto(Prescription s);
 
+    /**
+     * Default toEntity maps medecines from PrescriptionForm → Medecine.
+     * This causes duplicates when used in updateBis() because Hibernate's merge
+     * conflicts with the explicit medicine CRUD in the service.
+     *
+     * Override: ignore medecines so the service manages them explicitly.
+     */
+    @Override
+    @Mapping(target = "medecines", ignore = true)
+    Prescription toEntity(PrescriptionDTO dto);
+
     @Named("consultationId")
-    //@BeanMapping(ignoreByDefault = true)
     @Mapping(target = "id", source = "id")
     ConsultationDTO toDtoConsultationId(Consultation consultation);
 }
