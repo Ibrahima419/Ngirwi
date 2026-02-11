@@ -28,6 +28,7 @@ export const SurveillanceSheetUpdate = () => {
   const loading = useAppSelector(state => state.surveillanceSheet.loading);
   const updating = useAppSelector(state => state.surveillanceSheet.updating);
   const updateSuccess = useAppSelector(state => state.surveillanceSheet.updateSuccess);
+  const errorMessage = useAppSelector(state => state.surveillanceSheet.errorMessage);
 
   const handleClose = () => {
     const hId = (surveillanceSheetEntity as any)?.hospitalisationId || (surveillanceSheetEntity as any)?.hospitalisation?.id;
@@ -59,6 +60,13 @@ export const SurveillanceSheetUpdate = () => {
       }
     }
   }, [updateSuccess]);
+
+  // Affichage des erreurs de sauvegarde (ex: date dupliquée, hospitalisation clôturée)
+  useEffect(() => {
+    if (errorMessage) {
+      toast.error(errorMessage);
+    }
+  }, [errorMessage]);
 
   const [medications, setMedications] = useState<MedicationEntry[]>([]);
   const [acts, setActs] = useState<ActEntry[]>([]);

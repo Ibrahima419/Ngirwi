@@ -109,7 +109,7 @@ module.exports = async options => {
               globOptions: { ignore: ['**/index.html'] },
             },
             {
-              from: require.resolve('axios/dist/axios.min.js'),
+              from: './node_modules/axios/dist/axios.min.js',
               to: 'swagger-ui/',
             },
             { from: './src/main/webapp/swagger-ui/', to: 'swagger-ui/' },

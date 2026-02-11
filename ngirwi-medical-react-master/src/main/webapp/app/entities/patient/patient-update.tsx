@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card } from 'reactstrap';
 import { ValidatedField, ValidatedForm } from 'react-jhipster';
+import { toast } from 'react-toastify';
 
 import { convertDateTimeToServer, displayDefaultDate } from 'app/shared/util/date-utils';
 import { translateGender, translateMaritalStatus, translateBloodType } from 'app/shared/util/translation-utils';
@@ -27,6 +28,7 @@ export const PatientUpdate = () => {
   const patientEntity = useAppSelector(state => state.patient.entity);
   const updating = useAppSelector(state => state.patient.updating);
   const updateSuccess = useAppSelector(state => state.patient.updateSuccess);
+  const errorMessage = useAppSelector(state => state.patient.errorMessage);
   const gENDERValues = Object.keys(GENDER);
   const bLOODTYPEValues = Object.keys(BLOODTYPE);
   const mARITALSTATUSValues = Object.keys(MARITALSTATUS);
@@ -48,6 +50,12 @@ export const PatientUpdate = () => {
       handleClose();
     }
   }, [updateSuccess]);
+
+  useEffect(() => {
+    if (errorMessage) {
+      toast.error(errorMessage);
+    }
+  }, [errorMessage]);
 
   const saveEntity = values => {
     values.dateCreated = convertDateTimeToServer(values.dateCreated);
@@ -310,9 +318,10 @@ export const PatientUpdate = () => {
               name="cni"
               data-cy="cni"
               type="text"
-              // validate={{
-              //   required: { value: true, message: 'Ce champ est obligatoire.' },
-              // }}
+              validate={{
+                required: { value: true, message: 'Ce champ est obligatoire.' },
+                pattern: { value: /^[0-9]{13}$/, message: 'Le NIN doit contenir exactement 13 chiffres.' },
+              }}
               placeholder="Numéro carte d'identité patient"
               style={{
                 borderRadius: '25px',
@@ -514,6 +523,7 @@ export const PatientUpdate = () => {
                 type="text"
                 validate={{
                   required: { value: true, message: 'Ce champ est obligatoire.' },
+                  pattern: { value: /^[0-9]{13}$/, message: 'Le NIN doit contenir exactement 13 chiffres.' },
                 }}
               />
               <ValidatedField label="Profession" id="patient-job" name="job" data-cy="job" type="text" />

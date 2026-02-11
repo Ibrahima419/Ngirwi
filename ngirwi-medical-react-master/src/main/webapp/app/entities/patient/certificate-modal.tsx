@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter, Button, Form, FormGroup, Label, Input } from 'reactstrap';
-import { PDFDownloadLink, Document, Page, Text, View, Image } from '@react-pdf/renderer';
+import { PDFDownloadLink, Document, Page, Text, View, Image, Font } from '@react-pdf/renderer';
 import { convertDateTimeFromServerToDate, displayDefaultDateTime, convertDateTimeFromServerToHours } from 'app/shared/util/date-utils';
 
 const CertificateModal = ({ isOpen, toggle, patient, hospital, account }) => {
@@ -11,6 +11,20 @@ const CertificateModal = ({ isOpen, toggle, patient, hospital, account }) => {
   };
 
   const generatePdf = () => {
+    Font.register({
+      family: 'Poppins',
+      fonts: [
+        { src: 'https://fonts.cdnfonts.com/s/16009/Poppins-Bold.woff', fontWeight: 'bold' },
+        { src: 'https://fonts.cdnfonts.com/s/16009/Poppins-Medium.woff', fontWeight: 'medium' },
+        { src: 'https://fonts.cdnfonts.com/s/16009/Poppins-Medium.woff', fontWeight: 'thin' },
+      ],
+    });
+
+    const logoSrc =
+      hospital?.logo && hospital?.logoContentType
+        ? `data:${hospital.logoContentType};base64,${hospital.logo}`
+        : 'content/images/logo-medecin-240x300.png';
+
     const doc = (
       <Document>
         <Page style={{ display: 'flex', flexDirection: 'column', fontFamily: 'Poppins' }}>
@@ -33,7 +47,7 @@ const CertificateModal = ({ isOpen, toggle, patient, hospital, account }) => {
               <Text style={{ fontSize: '15px', fontWeight: 'thin' }}>{hospital?.phone}</Text>
             </View>
             <View>
-              <Image style={{ width: '60px', height: '60px' }} src="content/images/logo-medecin-240x300.png" />
+              <Image style={{ width: '60px', height: '60px' }} src={logoSrc} />
             </View>
             <View style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-around', alignItems: 'center' }}>
               <Text style={{ fontSize: '20px', color: 'green', marginBottom: '9px', fontWeight: 'bold' }}>{hospital?.name}</Text>
@@ -71,7 +85,7 @@ const CertificateModal = ({ isOpen, toggle, patient, hospital, account }) => {
             </View>
           </View>
           <Image
-            src="content/images/logo-medecin-240x300.png"
+            src={logoSrc}
             style={{ position: 'absolute', top: '335', left: '15vw', zIndex: '1', width: '70vw', height: '40vh', opacity: 0.1 }}
           />
           <View
@@ -100,8 +114,8 @@ const CertificateModal = ({ isOpen, toggle, patient, hospital, account }) => {
                 }}
               >
                 Je, soussigné Dr {account.firstName + ' ' + account.lastName}, certifie avoir reçu en consultation Mme/Mlle/Mr{' '}
-                {patient.lastName + ' ' + patient.firstName} né le {patient.birthday} et atteste de son état de santé nécessite un repos
-                médical de {days} jours. Ce présent certificat lui à été délivré pour servir et valoir ce que de droit.
+                {patient.lastName + ' ' + patient.firstName} né le {patient.birthday} et atteste que son état de santé nécessite un repos
+                médical de {days} jours. Ce présent certificat lui a été délivré pour servir et valoir ce que de droit.
               </Text>
               {/* <Text
                 style={{

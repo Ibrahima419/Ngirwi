@@ -38,6 +38,7 @@ public class PatientDTO implements Serializable {
     private String phone;
 
     @NotNull
+    @Pattern(regexp = "^[0-9]{13}$", message = "Le NIN doit être exactement 13 chiffres")
     private String cni;
 
     private String job;

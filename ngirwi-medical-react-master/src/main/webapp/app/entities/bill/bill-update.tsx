@@ -132,6 +132,7 @@ export const BillUpdate = () => {
   const billEntity = useAppSelector(state => state.bill.entity);
   const updating = useAppSelector(state => state.bill.updating);
   const updateSuccess = useAppSelector(state => state.bill.updateSuccess);
+  const errorMessage = useAppSelector(state => state.bill.errorMessage);
   
   // Source de vérité unique pour Assurance/IPM (PDF, UI, et sauvegarde)
   const [blockAssurance, setBlockAssurance] = useState('');
@@ -250,6 +251,13 @@ export const BillUpdate = () => {
       handleClose();
     }
   }, [updateSuccess]);
+
+  // Affichage des erreurs de sauvegarde
+  useEffect(() => {
+    if (errorMessage) {
+      toast.error(errorMessage);
+    }
+  }, [errorMessage]);
 
   /**
    * Soumission du formulaire
@@ -937,7 +945,6 @@ export const BillUpdate = () => {
                   name="price"
                   type="number"
                   placeholder="Prix unitaire..."
-                  min="0"
                   value={element.price !== null && element.price !== undefined ? element.price : ''}
                   onChange={e => handleChange(index, e)}
                   disabled={idEdit === 'voir'}
