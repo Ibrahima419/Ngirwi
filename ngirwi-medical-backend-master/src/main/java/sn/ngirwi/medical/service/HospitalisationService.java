@@ -21,7 +21,6 @@ import sn.ngirwi.medical.repository.*;
 import sn.ngirwi.medical.service.dto.HospitalisationDTO;
 import sn.ngirwi.medical.service.dto.HospitalisationResumeDTO;
 import sn.ngirwi.medical.service.mapper.HospitalisationMapper;
-import sn.ngirwi.medical.service.CurrentHospitalProvider;
 
 @Service
 @Transactional

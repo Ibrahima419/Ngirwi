@@ -2,7 +2,6 @@ package sn.ngirwi.medical.service.mapper;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.Named;
 import sn.ngirwi.medical.domain.MiniConsultation;
 import sn.ngirwi.medical.domain.SurveillanceSheet;
 import sn.ngirwi.medical.service.dto.MiniConsultationDTO;

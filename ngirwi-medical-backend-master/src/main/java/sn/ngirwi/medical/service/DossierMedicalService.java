@@ -14,7 +14,6 @@ import sn.ngirwi.medical.repository.DossierMedicalRepository;
 import sn.ngirwi.medical.repository.PatientRepository;
 import sn.ngirwi.medical.service.dto.DossierMedicalDTO;
 import sn.ngirwi.medical.service.mapper.DossierMedicalMapper;
-import sn.ngirwi.medical.service.CurrentHospitalProvider;
 
 /**
  * Service Implementation for managing {@link DossierMedical}.

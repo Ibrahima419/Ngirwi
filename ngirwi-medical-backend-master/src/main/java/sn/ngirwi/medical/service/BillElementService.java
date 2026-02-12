@@ -13,9 +13,7 @@ import sn.ngirwi.medical.domain.BillElement;
 import sn.ngirwi.medical.repository.BillElementRepository;
 import sn.ngirwi.medical.repository.BillRepository;
 import sn.ngirwi.medical.service.dto.BillElementDTO;
-import sn.ngirwi.medical.service.dto.MedecineDTO;
 import sn.ngirwi.medical.service.mapper.BillElementMapper;
-import sn.ngirwi.medical.service.CurrentHospitalProvider;
 
 /**
  * Service Implementation for managing {@link BillElement}.

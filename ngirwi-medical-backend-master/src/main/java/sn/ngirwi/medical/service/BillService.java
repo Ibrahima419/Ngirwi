@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sn.ngirwi.medical.domain.Bill;
 import sn.ngirwi.medical.domain.BillElement;
-import sn.ngirwi.medical.domain.Medecine;
 import sn.ngirwi.medical.domain.Patient;
 import sn.ngirwi.medical.domain.User;
 import sn.ngirwi.medical.repository.BillElementRepository;
@@ -22,7 +21,6 @@ import sn.ngirwi.medical.service.dto.BillDTO;
 import sn.ngirwi.medical.service.dto.BillElementDTO;
 import sn.ngirwi.medical.service.mapper.BillElementMapper;
 import sn.ngirwi.medical.service.mapper.BillMapper;
-import sn.ngirwi.medical.service.CurrentHospitalProvider;
 
 /**
  * Service Implementation for managing {@link Bill}.

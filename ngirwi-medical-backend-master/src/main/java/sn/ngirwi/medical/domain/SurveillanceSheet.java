@@ -21,7 +21,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 ) // Pour une même hospitalisation (hospitalisation_id), il ne peut y avoir qu’une seule fiche journalière (sheet_date) à une date donnée.
 @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @SuppressWarnings("common-java:DuplicatedBlocks")
-public class SurveillanceSheet extends AbstractAuditingEntity implements Serializable {
+public class SurveillanceSheet extends AbstractAuditingEntity<Long> implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -142,6 +142,7 @@ public class SurveillanceSheet extends AbstractAuditingEntity implements Seriali
 
     // jhipster-needle-entity-add-field - JHipster will add fields here
 
+    @Override
     public Long getId() {
         return id;
     }

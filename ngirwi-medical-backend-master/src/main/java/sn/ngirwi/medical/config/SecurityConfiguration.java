@@ -15,14 +15,11 @@ import org.springframework.web.filter.CorsFilter;
 import org.zalando.problem.spring.web.advice.security.SecurityProblemSupport;
 import sn.ngirwi.medical.security.*;
 import sn.ngirwi.medical.security.jwt.*;
-import tech.jhipster.config.JHipsterProperties;
 
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true, securedEnabled = true)
 @Import(SecurityProblemSupport.class)
 public class SecurityConfiguration {
-
-    private final JHipsterProperties jHipsterProperties;
 
     private final TokenProvider tokenProvider;
 
@@ -32,13 +29,11 @@ public class SecurityConfiguration {
     public SecurityConfiguration(
         TokenProvider tokenProvider,
         CorsFilter corsFilter,
-        JHipsterProperties jHipsterProperties,
         SecurityProblemSupport problemSupport
     ) {
         this.tokenProvider = tokenProvider;
         this.corsFilter = corsFilter;
         this.problemSupport = problemSupport;
-        this.jHipsterProperties = jHipsterProperties;
     }
 
     @Bean

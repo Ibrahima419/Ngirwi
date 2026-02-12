@@ -21,7 +21,6 @@ import sn.ngirwi.medical.repository.PatientRepository;
 import sn.ngirwi.medical.repository.UserRepository;
 import sn.ngirwi.medical.service.dto.ConsultationDTO;
 import sn.ngirwi.medical.service.mapper.ConsultationMapper;
-import sn.ngirwi.medical.service.CurrentHospitalProvider;
 
 /**
  * Service Implementation for managing {@link Consultation}.

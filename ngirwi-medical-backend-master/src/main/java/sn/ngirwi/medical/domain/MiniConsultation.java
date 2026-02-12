@@ -6,7 +6,7 @@ import javax.persistence.*;
 
 @Entity
 @Table(name = "mini_consultation")
-public class MiniConsultation extends AbstractAuditingEntity implements Serializable {
+public class MiniConsultation extends AbstractAuditingEntity<Long> implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -36,6 +36,7 @@ public class MiniConsultation extends AbstractAuditingEntity implements Serializ
     public MiniConsultation() {}
 
     // Getters / setters
+    @Override
     public Long getId() {
         return id;
     }
