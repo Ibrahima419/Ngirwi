@@ -15,4 +15,6 @@
 ngirwi-medical-react-master/config
 **/coverage/
 
-
+# Not project source
+HANDOFF_AI_CONTEXT.md
+cursor_*
