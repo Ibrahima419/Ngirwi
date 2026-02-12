@@ -26,11 +26,11 @@ public interface HospitalisationRepository extends JpaRepository<Hospitalisation
     Optional<Hospitalisation> findFirstByPatient_IdOrderByEntryDateDesc(Long patientId);
 
     @Query(
-        "select h from Hospitalisation h where (:patientId is null or h.patient.id = :patientId) " +
-        "and (:status is null or h.status = :status) " +
-        "and (:from is null or h.entryDate >= :from) " +
-        "and (:to is null or h.entryDate <= :to) " +
-        "and (:hospitalId is null or h.patient.hospitalId = :hospitalId)"
+        "select h from Hospitalisation h where (cast(:patientId as long) is null or h.patient.id = :patientId) " +
+        "and (cast(:status as string) is null or h.status = :status) " +
+        "and (cast(:from as timestamp) is null or h.entryDate >= :from) " +
+        "and (cast(:to as timestamp) is null or h.entryDate <= :to) " +
+        "and (cast(:hospitalId as long) is null or h.patient.hospitalId = :hospitalId)"
     )
     Page<Hospitalisation> search(
         @Param("patientId") Long patientId,

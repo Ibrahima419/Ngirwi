@@ -5,7 +5,6 @@ import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.StreamSupport;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import org.slf4j.Logger;
@@ -63,6 +62,10 @@ public class PatientResource {
         if (patientDTO.getId() != null) {
             throw new BadRequestAlertException("A new patient cannot already have an ID", ENTITY_NAME, "idexists");
         }
+        String normalizedCni = patientDTO.getCni() != null ? patientDTO.getCni().replaceAll("\\s+", "") : null;
+        if (normalizedCni != null && patientRepository.existsByCni(normalizedCni)) {
+            throw new BadRequestAlertException("Un patient avec ce NIN existe déjà", ENTITY_NAME, "cniduplicate");
+        }
         PatientDTO result = patientService.save(patientDTO);
         return ResponseEntity
             .created(new URI("/api/patients/" + result.getId()))
@@ -96,7 +99,10 @@ public class PatientResource {
         if (!patientRepository.existsById(id)) {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
-
+        String normalizedCni = patientDTO.getCni() != null ? patientDTO.getCni().replaceAll("\\s+", "") : null;
+        if (normalizedCni != null && patientRepository.existsByCniAndIdNot(normalizedCni, id)) {
+            throw new BadRequestAlertException("Un patient avec ce NIN existe déjà", ENTITY_NAME, "cniduplicate");
+        }
         PatientDTO result = patientService.update(patientDTO);
         return ResponseEntity
             .ok()

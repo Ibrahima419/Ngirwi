@@ -121,7 +121,8 @@ export const createEntitySlice = <T, Reducers extends SliceCaseReducers<EntitySt
           state.loading = false;
           state.updating = false;
           state.updateSuccess = false;
-          state.errorMessage = action.error.message;
+          const axiosData = (action.error as any)?.response?.data;
+          state.errorMessage = axiosData?.title || axiosData?.message || action.error.message;
         });
       }
     },

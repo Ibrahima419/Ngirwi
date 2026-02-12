@@ -36,6 +36,7 @@
     <include file="config/liquibase/changelog/202510180004_active_hospitalisation_partial_unique_pg.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-changelog - JHipster will add liquibase changelogs here -->
     <include file="config/liquibase/changelog/20251220220000_hospital_not_null_fields.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260211120000_normalize_patient_cni.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20220910204513_added_entity_constraints_DossierMedical.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20220910204514_added_entity_constraints_Consultation.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20220910204515_added_entity_constraints_Prescription.xml" relativeToChangelogFile="false"/>

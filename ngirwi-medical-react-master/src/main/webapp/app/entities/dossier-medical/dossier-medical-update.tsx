@@ -36,17 +36,20 @@ export const DossierMedicalUpdate = () => {
   const account = useAppSelector(state => state.authentication.account);
 
   const handleClose = () => {
-    navigate('/dossier-medical' + location.search);
+    navigate(-1);
   };
 
   useEffect(() => {
-    if (isNew) {
-      dispatch(reset());
-    } else {
+    dispatch(reset());
+    if (!isNew) {
       dispatch(getEntity(id));
     }
 
     dispatch(getPatients({ id: account.hospitalId !== null && account.hospitalId !== undefined ? account.hospitalId : 0 }));
+
+    return () => {
+      dispatch(reset());
+    };
   }, []);
 
   useEffect(() => {
@@ -67,12 +70,8 @@ export const DossierMedicalUpdate = () => {
 
     if (isNew) {
       dispatch(createEntity(entity));
-      window.history.back();
-      // navigate(`/patient/${idPatient}`);
     } else {
       dispatch(updateEntity(entity));
-      window.history.back();
-      // navigate(`/patient/${idPatient}`);
     }
   };
 

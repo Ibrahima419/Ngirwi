@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Card } from 'reactstrap';
+import { Button, Card, Spinner } from 'reactstrap';
 import { ValidatedField, ValidatedForm } from 'react-jhipster';
 import { toast } from 'react-toastify';
 
@@ -29,6 +29,7 @@ export const PatientUpdate = () => {
   const updating = useAppSelector(state => state.patient.updating);
   const updateSuccess = useAppSelector(state => state.patient.updateSuccess);
   const errorMessage = useAppSelector(state => state.patient.errorMessage);
+  const savingRef = useRef(false);
   const gENDERValues = Object.keys(GENDER);
   const bLOODTYPEValues = Object.keys(BLOODTYPE);
   const mARITALSTATUSValues = Object.keys(MARITALSTATUS);
@@ -57,7 +58,16 @@ export const PatientUpdate = () => {
     }
   }, [errorMessage]);
 
+  useEffect(() => {
+    if (!updating) {
+      savingRef.current = false;
+    }
+  }, [updating]);
+
   const saveEntity = values => {
+    if (savingRef.current || updating) return;
+    savingRef.current = true;
+
     values.dateCreated = convertDateTimeToServer(values.dateCreated);
     values.dateUpdated = convertDateTimeToServer(values.dateUpdated);
 
@@ -409,12 +419,13 @@ export const PatientUpdate = () => {
               style={{
                 borderRadius: '25px',
                 color: 'white',
-                backgroundColor: '#56B5C5',
-                borderColor: '#56B5C5',
+                backgroundColor: updating ? '#9dd5de' : '#56B5C5',
+                borderColor: updating ? '#9dd5de' : '#56B5C5',
                 flex: '1 1 100%',
               }}
             >
-              Enregistrer
+              {updating ? <Spinner size="sm" /> : null}
+              {updating ? ' Enregistrement...' : 'Enregistrer'}
             </Button>
             &nbsp;
             <Button

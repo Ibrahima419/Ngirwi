@@ -1,13 +1,13 @@
 import React, { useEffect } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { Button, Row, Col, Card } from 'reactstrap';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Button, Card, Spinner } from 'reactstrap';
 import { TextFormat } from 'react-jhipster';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { APP_DATE_FORMAT, APP_LOCAL_DATE_FORMAT } from 'app/config/constants';
 import { useAppDispatch, useAppSelector } from 'app/config/store';
 
-import { getEntity, getPatient } from './dossier-medical.reducer';
+import { getEntity } from './dossier-medical.reducer';
 import Header from 'app/shared/layout/header/header';
 
 export const DossierMedicalDetail = () => {
@@ -17,12 +17,18 @@ export const DossierMedicalDetail = () => {
   const { id } = useParams<'id'>();
 
   const dossierMedicalEntity = useAppSelector(state => state.dossierMedical.entity);
-  const patientEntity = useAppSelector(state => state.patient.entity);
+  const loading = useAppSelector(state => state.dossierMedical.loading);
   useEffect(() => {
-    if (dispatch(getPatient(id)).arg < 1) {
-      navigate(`/dossier-medical/new/${id}`);
-    }
+    dispatch(getEntity(id));
   }, []);
+
+  if (loading) {
+    return (
+      <div style={{ paddingLeft: '16vw', paddingTop: '10%', display: 'flex', justifyContent: 'center' }}>
+        <Spinner color="primary" />
+      </div>
+    );
+  }
 
   return (
     <div

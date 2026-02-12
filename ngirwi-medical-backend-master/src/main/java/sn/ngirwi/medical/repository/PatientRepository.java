@@ -16,4 +16,8 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     Page<Patient> findByAuthorIn(Collection<String> authors, Pageable pageable);
 
     Page<Patient> findByHospitalId(Long hospitalId, Pageable pageable);
+
+    boolean existsByCni(String cni);
+
+    boolean existsByCniAndIdNot(String cni, Long id);
 }

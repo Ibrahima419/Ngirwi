@@ -61,6 +61,7 @@ public class PatientService {
      */
     public PatientDTO save(PatientDTO patientDTO) {
         log.debug("Request to save Patient : {}", patientDTO);
+        normalizeCni(patientDTO);
         Patient patient = patientMapper.toEntity(patientDTO);
         User user = userRepository.findOneByLogin(patient.getAuthor()).get();
         patient.setHospitalId(user.getHospitalId());
@@ -79,6 +80,7 @@ public class PatientService {
      */
     public PatientDTO update(PatientDTO patientDTO) {
         log.debug("Request to update Patient : {}", patientDTO);
+        normalizeCni(patientDTO);
         if (patientDTO.getId() == null) {
             throw new IllegalArgumentException("Patient ID cannot be null for update");
         }
@@ -184,6 +186,13 @@ public class PatientService {
         patientRepository.findById(id).ifPresent(existing -> assertSameHospital(existing.getHospitalId()));
         dossierMedicalRepository.deleteByPatient_Id(id);
         patientRepository.deleteById(id);
+    }
+
+    private void normalizeCni(PatientDTO dto) {
+        if (dto.getCni() != null) {
+            String normalized = dto.getCni().replaceAll("\\s+", "");
+            dto.setCni(normalized);
+        }
     }
 
     private void assertSameHospital(Long entityHospitalId) {

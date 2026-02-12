@@ -34,7 +34,7 @@ export const getEntity = createAsyncThunk(
 );
 
 export const getPatient = createAsyncThunk(
-  'dossierMedical/fetch_entity',
+  'dossierMedical/fetch_entity_by_patient',
   async (id: string | number) => {
     const requestUrl = `${apiUrl}-patient/${id}`;
     return axios.get<IDossierMedical>(requestUrl);
@@ -94,6 +94,10 @@ export const DossierMedicalSlice = createEntitySlice({
         state.loading = false;
         state.entity = action.payload.data;
       })
+      .addCase(getPatient.fulfilled, (state, action) => {
+        state.loading = false;
+        state.entity = action.payload.data;
+      })
       .addCase(deleteEntity.fulfilled, state => {
         state.updating = false;
         state.updateSuccess = true;
@@ -115,7 +119,7 @@ export const DossierMedicalSlice = createEntitySlice({
         state.updateSuccess = true;
         state.entity = action.payload.data;
       })
-      .addMatcher(isPending(getEntities, getEntity), state => {
+      .addMatcher(isPending(getEntities, getEntity, getPatient), state => {
         state.errorMessage = null;
         state.updateSuccess = false;
         state.loading = true;

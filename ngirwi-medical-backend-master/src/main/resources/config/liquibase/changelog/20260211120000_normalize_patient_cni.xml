@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="20260211120000-1" author="ngirwi">
+        <comment>Remove empty duplicate patients whose normalized CNI would collide with existing records.
+            Patient 1716 (cni='1535489300226 ') duplicates 1701 (cni='1535489300226') — zero related records.
+            Patient 1718 (cni='1 960 2002 00011') duplicates 1717 (cni='1960200200011') — zero related records.
+        </comment>
+        <sql>DELETE FROM patient WHERE id IN (1716, 1718);</sql>
+    </changeSet>
+
+    <changeSet id="20260211120000-2" author="ngirwi">
+        <comment>Strip all whitespace from patient.cni to normalize existing data</comment>
+        <sql>UPDATE patient SET cni = regexp_replace(cni, '\s+', '', 'g') WHERE cni ~ '\s';</sql>
+    </changeSet>
+
+</databaseChangeLog>
